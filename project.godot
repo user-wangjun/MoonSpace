@@ -17,6 +17,7 @@ config/version="0.1.0"
 [autoload]
 
 EventBus="*res://scripts/autoload/event_bus.gd"
+GameState="*res://scripts/autoload/game_state.gd"
 
 [editor_plugins]
 
