@@ -1,0 +1,28 @@
+# Godot 4+ 通用忽略文件
+
+# Godot 特定
+.godot/
+*.import
+export_presets.cfg
+*.translation
+
+# 导入资源（从 Blender 等）
+*.blend
+*.blend1
+*.obj
+*.fbx
+
+# Mono 特定
+.mono/
+mono_crash.*
+
+# 编辑器设置
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+Thumbs.db
+.DS_Store
+desktop.ini
