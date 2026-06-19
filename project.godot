@@ -18,6 +18,7 @@ config/version="0.1.0"
 
 EventBus="*res://scripts/autoload/event_bus.gd"
 GameState="*res://scripts/autoload/game_state.gd"
+RuleEngine="*res://scripts/autoload/rule_engine.gd"
 
 [editor_plugins]
 
