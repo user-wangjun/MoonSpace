@@ -1,0 +1,43 @@
+[gd_scene load_steps=12 format=3 uid="uid://mainscene00001"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/game_world.tscn" id="2_game_world"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="3_player"]
+[ext_resource type="PackedScene" path="res://scenes/wugang_npc.tscn" id="4_wugang"]
+[ext_resource type="PackedScene" path="res://scenes/yutu_npc.tscn" id="5_yutu"]
+[ext_resource type="PackedScene" path="res://scenes/dialog_box.tscn" id="6_dialog"]
+[ext_resource type="PackedScene" path="res://scenes/rule_book.tscn" id="7_rule_book"]
+[ext_resource type="PackedScene" path="res://scenes/overlay_effect.tscn" id="8_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/root_spread.tscn" id="9_root_spread"]
+[ext_resource type="PackedScene" path="res://scenes/death_effect.tscn" id="10_death"]
+[ext_resource type="Script" path="res://scripts/world/distortion_manager.gd" id="11_distortion"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="GameWorld" parent="." instance=ExtResource("2_game_world")]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+position = Vector2(48, 200)
+
+[node name="WugangNPC" parent="." instance=ExtResource("4_wugang")]
+position = Vector2(96, 48)
+
+[node name="YutuNPC" parent="." instance=ExtResource("5_yutu")]
+position = Vector2(112, 184)
+
+[node name="RootSpread" parent="." instance=ExtResource("9_root_spread")]
+position = Vector2(48, 48)
+
+[node name="DistortionManager" type="Node" parent="."]
+script = ExtResource("11_distortion")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="DialogBox" parent="UI" instance=ExtResource("6_dialog")]
+
+[node name="RuleBook" parent="UI" instance=ExtResource("7_rule_book")]
+
+[node name="OverlayEffect" parent="UI" instance=ExtResource("8_overlay")]
+
+[node name="DeathEffect" parent="." instance=ExtResource("10_death")]
