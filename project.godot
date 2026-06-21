@@ -13,6 +13,7 @@ config_version=5
 config/name="MoonSpace"
 config/description="像素恐怖规则怪谈 - 月宫探索"
 config/version="0.1.0"
+run/main_scene="res://scenes/main.tscn"
 
 [autoload]
 
