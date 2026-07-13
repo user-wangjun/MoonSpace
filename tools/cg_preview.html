@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoonSpace CG Player Preview</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101114;--panel:#181a20;--panel2:#20232b;--line:#343844;--text:#eef1f5;--muted:#a9b0bc;--accent:#9ee7df;--warn:#e05b6d;--moon:#f4ead2}*{box-sizing:border-box}body{margin:0;height:100vh;overflow:hidden;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei","Segoe UI",sans-serif}button,select,input{font:inherit}.app{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);height:100vh}.side{display:flex;min-height:0;flex-direction:column;border-right:1px solid var(--line);background:var(--panel)}.top{display:grid;gap:10px;padding:14px;border-bottom:1px solid var(--line)}.title{display:flex;align-items:baseline;justify-content:space-between;gap:10px}h1{margin:0;font-size:18px;letter-spacing:0}.count,label,.hint{color:var(--muted);font-size:12px}select,input[type=search]{width:100%;height:34px;border:1px solid var(--line);border-radius:6px;background:#111318;color:var(--text);padding:0 10px;outline:none}.field{display:grid;gap:6px}.segments{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}button{min-height:32px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer}button:hover{border-color:#697080}button.active{border-color:var(--accent);background:#163330;color:var(--accent)}.list{display:grid;align-content:start;gap:8px;min-height:0;overflow:auto;padding:12px}.item{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;width:100%;min-height:72px;padding:8px;text-align:left}.item.active{border-color:var(--warn);background:#311820}.thumb{width:86px;height:56px;overflow:hidden;border:1px solid #2d313b;border-radius:4px;background:#08090c}.thumb img{width:100%;height:100%;object-fit:cover;display:block}.item-title{display:block;overflow:hidden;font-size:13px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.item-meta{display:block;margin-top:5px;color:var(--muted);font-size:12px;line-height:1.35}.main{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-width:0;min-height:0;background:#0d0e11}.bar{display:grid;grid-template-columns:minmax(200px,1fr) auto auto auto;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:#13151a}.now{min-width:0}.now strong,.now span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.now strong{font-size:16px}.now span{margin-top:3px;color:var(--muted);font-size:12px}.group{display:flex;align-items:center;gap:6px;white-space:nowrap}.playarea{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;background:#090a0d}.stagewrap{min-width:0;min-height:0;overflow:auto}.stagewrap.checker{background-color:#111;background-image:linear-gradient(45deg,#252525 25%,transparent 25%),linear-gradient(-45deg,#252525 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#252525 75%),linear-gradient(-45deg,transparent 75%,#252525 75%);background-position:0 0,0 10px,10px -10px,-10px 0;background-size:20px 20px}.stagewrap.light{background:#d8d7d1}.stage{display:grid;min-width:100%;min-height:100%;place-items:center;padding:20px}.player{position:relative;width:min(100%,960px);aspect-ratio:16/9}.player.zoom-1{width:480px}.player.zoom-2{width:960px}.player.zoom-3{width:1440px}canvas{display:block;width:100%;height:100%;background:#000;box-shadow:0 18px 60px rgb(0 0 0 / 42%);image-rendering:auto}.controls{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);background:#121419}.time{color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}input[type=range]{width:100%;accent-color:var(--accent)}.frames{display:grid;gap:8px;padding:10px 14px;border-top:1px solid var(--line);background:#15171d}.strip{display:flex;gap:8px;overflow:auto}.frame{display:grid;gap:5px;min-width:118px;padding:6px;text-align:left}.frame.active{border-color:var(--accent);background:#163330}.frame img{width:104px;height:58px;object-fit:cover;border:1px solid #2d313b;border-radius:4px}.frame span{overflow:hidden;color:var(--muted);font-size:11px;text-overflow:ellipsis;white-space:nowrap}.info{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;border-top:1px solid var(--line);background:var(--line);color:var(--muted);font-size:12px}.info div{min-width:0;overflow:hidden;padding:9px 12px;background:#15171d;text-overflow:ellipsis;white-space:nowrap}.info strong{color:var(--text);font-weight:600}@media(max-width:860px){body{overflow:auto}.app{grid-template-columns:1fr;height:auto;min-height:100vh}.side{border-right:0;border-bottom:1px solid var(--line)}.list{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));max-height:260px}.bar,.controls{grid-template-columns:1fr}.info{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="top">
+        <div class="title"><h1>CG Player</h1><span class="count" id="count"></span></div>
+        <div class="field"><label for="cgSelect">CG 片段</label><select id="cgSelect"></select></div>
+        <div class="segments"><button class="active" data-filter="all" type="button">全部</button><button data-filter="opening" type="button">开场</button><button data-filter="story" type="button">主线</button></div>
+        <div class="field"><label for="search">搜索</label><input id="search" type="search" placeholder="标题 / 文件名 / 字幕"></div>
+        <div class="hint">空格播放/暂停，左右键跳 0.5 秒。点击涉及帧可跳到该帧开始时间。</div>
+      </div>
+      <div class="list" id="cgList"></div>
+    </aside>
+    <main class="main">
+      <div class="bar">
+        <div class="now"><strong id="currentName"></strong><span id="currentPath"></span></div>
+        <div class="group"><label for="zoomSelect">缩放</label><select id="zoomSelect"><option value="fit">适配</option><option value="1">游戏尺寸</option><option value="2">2x</option><option value="3">3x</option></select></div>
+        <div class="group"><label for="bgSelect">背景</label><select id="bgSelect"><option value="dark">暗色</option><option value="checker">棋盘</option><option value="light">亮色</option></select></div>
+        <div class="group"><button id="prevBtn" type="button">上一段</button><button id="nextBtn" type="button">下一段</button></div>
+      </div>
+      <div class="playarea">
+        <div class="stagewrap" id="stageWrap"><div class="stage"><div class="player" id="playerBox"><canvas id="canvas" width="480" height="270"></canvas></div></div></div>
+        <div class="controls"><button id="playBtn" type="button">播放</button><input id="timeline" type="range" min="0" max="1" step="0.001" value="0"><span class="time" id="timeText">0.0 / 0.0</span></div>
+      </div>
+      <div class="frames"><label>涉及图片帧</label><div class="strip" id="frameStrip"></div></div>
+      <div class="info"><div>类型 <strong id="infoGroup"></strong></div><div>时长 <strong id="infoDuration"></strong></div><div>当前帧 <strong id="infoFrame"></strong></div><div>序号 <strong id="infoIndex"></strong></div></div>
+    </main>
+  </div>
+  <script>
+    const W = 480;
+    const H = 270;
+    const ASSET = "../assets/sprites/moonspace/";
+    const PREVIEW = "../tmp/cg-preview-candidates/";
+    const capOpening = [
+      [0,3.2,"新下载的 MoonSpace，进度条停在了最后一格。"],
+      [3.2,6,"窗外升起血月，房间里没有风。"],
+      [6,9.4,"云层被红光撕开，血月从城市高楼后露出边缘。"],
+      [9.4,12.6,"红光照到电脑，也照到你的影子。"],
+      [12.6,14,"屏幕开始呼吸，MoonSpace 在里面反过来看你。"],
+      [14,15,"醒来时，月宫的规条已经刻在面前。"]
+    ];
+    const capEndings = {
+      he:[[0,2.2,"月谷祭坛亮起，月宫的声音在身后合拢。"],[2.2,4.8,"凌霄来使复命已毕，伪装也完成了它的职责。"],[4.8,8,"你回到了地球。MoonSpace 仍在屏幕上，但它不再认识你。"]],
+      wugang:[[0,2.6,"池水照见的，不再只是来使。"],[2.6,5.2,"斧声从倒影里响起，替你答完了月宫的问题。"],[5.2,8,"新的伐桂人，被月桂收下了。"]],
+      yutu:[[0,2.6,"池水照见的，不再只是来使。"],[2.6,5.2,"杵声从腕骨里响起，药香替你留在了月宫。"],[5.2,8,"新的捣药人，被药臼收下了。"]],
+      double:[[0,2.6,"两份差错在池边合成了一份记录。"],[2.6,5.2,"玉桂树伸出根须，把多余的来使拖回树下。"],[5.2,8,"树皮上，缓缓多出一个流血的面孔。"]],
+      change:[[0,2.6,"月光尽了，你还在宫中。"],[2.6,5.2,"嫦娥没有催促，只看着流程完成。"],[5.2,8,"广寒宫不缺月光，只缺一个留下来等的人。"]]
+    };
+    const sequences = [
+      {id:"opening-full", group:"opening", groupName:"开场", title:"开场完整 CG / 新候选", duration:15, mode:"sequence", thumb:PREVIEW+"opening_01_download_clouded.png", captions:capOpening, frames:[
+        {label:"下载初始 / 云遮血月", at:0, file:"opening_01_download_clouded.png", path:PREVIEW+"opening_01_download_clouded.png"},
+        {label:"下载推进", at:1.2, file:"opening_02_download_progress.png", path:PREVIEW+"opening_02_download_progress.png"},
+        {label:"回头看窗 / 月仍被遮", at:2.4, file:"opening_03_turn_clouded_moon.png", path:PREVIEW+"opening_03_turn_clouded_moon.png"},
+        {label:"血月从城市后露出", at:3.6, file:"opening_04_moon_emerging_city.png", path:PREVIEW+"opening_04_moon_emerging_city.png"},
+        {label:"血月半露", at:4.8, file:"opening_05_half_revealed_city.png", path:PREVIEW+"opening_05_half_revealed_city.png"},
+        {label:"血月更清晰", at:6.0, file:"opening_06_blood_moon_clearer.png", path:PREVIEW+"opening_06_blood_moon_clearer.png"},
+        {label:"电脑白月开始污染", at:7.2, file:"opening_07_white_moon_screen_corrupting.png", path:PREVIEW+"opening_07_white_moon_screen_corrupting.png"},
+        {label:"白月转红月", at:8.4, file:"opening_08_white_to_red_screen.png", path:PREVIEW+"opening_08_white_to_red_screen.png"},
+        {label:"红月屏幕扭曲", at:9.6, file:"opening_09_red_moon_screen_glitch.png", path:PREVIEW+"opening_09_red_moon_screen_glitch.png"},
+        {label:"仍在房间 / 尝试逃离", at:11.0, file:"opening_10_try_escape_room.png", path:PREVIEW+"opening_10_try_escape_room.png"},
+        {label:"被拉回电脑", at:12.8, file:"opening_11_pulled_to_computer.png", path:PREVIEW+"opening_11_pulled_to_computer.png"},
+        {label:"被电脑吞入 / 房间黑场", at:14.0, file:"opening_12_swallowed_black_room.png", path:PREVIEW+"opening_12_swallowed_black_room.png"}
+      ]},
+      {id:"report-staging", group:"story", groupName:"主线", title:"复命短过场 / 实际角色合成候选", duration:5.4, mode:"sequence", thumb:PREVIEW+"report_01_enter_aisle.png", captions:[[0,2.0,"来使沿中堂入内，仍是月宫识得的那副伪装。"],[2.0,4.0,"月光把距离拉长，嫦娥在殿尽头等候。"],[4.0,5.4,"来使垂首呈上记录，嫦娥在月光里收下复命。"]], frames:[
+        {label:"入殿", at:0, file:"report_01_enter_aisle.png", path:PREVIEW+"report_01_enter_aisle.png"},
+        {label:"向前行走", at:0.9, file:"report_02_walk_forward.png", path:PREVIEW+"report_02_walk_forward.png"},
+        {label:"抵达中段", at:1.8, file:"report_03_mid_hall.png", path:PREVIEW+"report_03_mid_hall.png"},
+        {label:"嫦娥前行礼", at:2.7, file:"report_04_bow_before_change.png", path:PREVIEW+"report_04_bow_before_change.png"},
+        {label:"双手呈递记录", at:3.6, file:"report_05_present_records.png", path:PREVIEW+"report_05_present_records.png"},
+        {label:"记录被收下", at:4.5, file:"report_06_records_received.png", path:PREVIEW+"report_06_records_received.png"}
+      ]},
+      {id:"he-earth-return", group:"story", groupName:"主线", title:"HE / 返回地球", duration:8, mode:"still", thumb:ASSET+"cg/he_earth_return.png", captions:capEndings.he, frames:[{label:"HE 背景", at:0, file:"cg/he_earth_return.png", path:ASSET+"cg/he_earth_return.png"}]},
+      {id:"be-wugang", group:"story", groupName:"主线", title:"BE / 吴刚污染", duration:8, mode:"still", thumb:ASSET+"cg/be_wugang_pollution.png", captions:capEndings.wugang, frames:[{label:"吴刚污染", at:0, file:"cg/be_wugang_pollution.png", path:ASSET+"cg/be_wugang_pollution.png"}]},
+      {id:"be-yutu", group:"story", groupName:"主线", title:"BE / 玉兔污染", duration:8, mode:"still", thumb:ASSET+"cg/be_yutu_pollution.png", captions:capEndings.yutu, frames:[{label:"玉兔污染", at:0, file:"cg/be_yutu_pollution.png", path:ASSET+"cg/be_yutu_pollution.png"}]},
+      {id:"be-double", group:"story", groupName:"主线", title:"BE / 双重污染", duration:8, mode:"still", thumb:ASSET+"cg/be_double_pollution.png", captions:capEndings.double, frames:[{label:"双重污染", at:0, file:"cg/be_double_pollution.png", path:ASSET+"cg/be_double_pollution.png"}]},
+      {id:"be-change", group:"story", groupName:"主线", title:"BE / 留宫等待", duration:8, mode:"still", thumb:ASSET+"cg/be_wait_trap.png", captions:capEndings.change, frames:[{label:"留宫等待", at:0, file:"cg/be_wait_trap.png", path:ASSET+"cg/be_wait_trap.png"}]}
+    ];
+    const state = {filter:"all", query:"", currentId:new URLSearchParams(location.search).get("cg") || localStorage.getItem("moonspace-cg-player") || "opening-full", time:0, playing:false, last:0};
+    const els = {count:document.querySelector("#count"), select:document.querySelector("#cgSelect"), list:document.querySelector("#cgList"), search:document.querySelector("#search"), canvas:document.querySelector("#canvas"), play:document.querySelector("#playBtn"), timeline:document.querySelector("#timeline"), time:document.querySelector("#timeText"), strip:document.querySelector("#frameStrip"), name:document.querySelector("#currentName"), path:document.querySelector("#currentPath"), zoom:document.querySelector("#zoomSelect"), bg:document.querySelector("#bgSelect"), player:document.querySelector("#playerBox"), wrap:document.querySelector("#stageWrap"), group:document.querySelector("#infoGroup"), duration:document.querySelector("#infoDuration"), frame:document.querySelector("#infoFrame"), index:document.querySelector("#infoIndex"), prev:document.querySelector("#prevBtn"), next:document.querySelector("#nextBtn"), filters:Array.from(document.querySelectorAll("[data-filter]"))};
+    const ctx = els.canvas.getContext("2d");
+    const images = new Map();
+    for (const seq of sequences) for (const frame of seq.frames) if (frame.path && !images.has(frame.path)) { const img = new Image(); img.onload = () => renderCanvas(); img.src = frame.path; images.set(frame.path,img); }
+    function seq(){return sequences.find(s=>s.id===state.currentId)||sequences[0]}
+    function visible(){const q=state.query.trim().toLowerCase();return sequences.filter(s=>(state.filter==="all"||s.group===state.filter)&&(!q||`${s.title} ${s.frames.map(f=>f.file).join(" ")} ${s.captions.map(c=>c[2]).join(" ")}`.toLowerCase().includes(q)))}
+    function frameAt(s,t){let current=s.frames[0]; for(const f of s.frames) if(t>=f.at) current=f; return current}
+    function drawImage(path){const img=images.get(path); if(img&&img.complete&&img.naturalWidth) ctx.drawImage(img,0,0,W,H); else {ctx.fillStyle="#05060a";ctx.fillRect(0,0,W,H)}}
+    function captionAt(s,t){return s.captions.find(c=>t>=c[0]&&t<c[1])||s.captions[s.captions.length-1]}
+    function drawCaption(s,t){const cap=captionAt(s,t); if(!cap)return; const fade=Math.min(1,Math.max(0,(t-cap[0])/.5),Math.max(0,(cap[1]-t)/.5)); if(fade<=0)return; ctx.fillStyle=`rgba(0,0,0,${.72*fade})`;ctx.fillRect(0,H-42,W,34);ctx.fillStyle=`rgba(244,234,210,${fade})`;ctx.font="13px 'Microsoft YaHei','Segoe UI',sans-serif";ctx.textBaseline="top";wrapText(cap[2],22,H-32,392,17)}
+    function wrapText(text,x,y,maxWidth,lineHeight){let line=""; for(const ch of text){const test=line+ch;if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y);line=ch;y+=lineHeight}else line=test} if(line)ctx.fillText(line,x,y)}
+    function drawSkip(text){ctx.fillStyle="rgba(169,176,188,.95)";ctx.font="11px 'Microsoft YaHei','Segoe UI',sans-serif";ctx.fillText(text,410,11)}
+    function renderCanvas(){const s=seq(),t=state.time;ctx.clearRect(0,0,W,H);const f=frameAt(s,t);drawImage(f.path);drawCaption(s,t);drawSkip(s.id==="report-staging"?"E 跳过":"E / Esc 跳过");updateReadout()}
+    function updateReadout(){const s=seq(),f=frameAt(s,state.time);els.timeline.value=(state.time/s.duration).toFixed(3);els.time.textContent=`${state.time.toFixed(1)} / ${s.duration.toFixed(1)}`;els.frame.textContent=f.file;document.querySelectorAll(".frame").forEach(b=>b.classList.toggle("active",frameAt(s,state.time).label===b.dataset.label))}
+    function loop(now){if(state.playing){if(!state.last)state.last=now;state.time+=(now-state.last)/1000;const s=seq();if(state.time>=s.duration){state.time=s.duration;state.playing=false;els.play.textContent="重播"}state.last=now;renderCanvas()}requestAnimationFrame(loop)}
+    function renderList(){const vs=visible();els.count.textContent=`${vs.length} / ${sequences.length}`;els.select.innerHTML="";els.list.innerHTML="";for(const s of vs){const opt=document.createElement("option");opt.value=s.id;opt.textContent=`${s.groupName} - ${s.title}`;els.select.append(opt);const item=document.createElement("button");item.type="button";item.className="item";item.dataset.id=s.id;item.innerHTML=`<span class="thumb"><img src="${s.thumb}" alt=""></span><span><span class="item-title">${s.title}</span><span class="item-meta">${s.groupName}<br>${s.duration.toFixed(1)} 秒 / ${s.frames.length} 帧</span></span>`;item.onclick=()=>selectSeq(s.id);els.list.append(item)}if(!vs.some(s=>s.id===state.currentId)&&vs[0])state.currentId=vs[0].id;renderCurrent()}
+    function renderFrames(){const s=seq();els.strip.innerHTML="";for(const f of s.frames){const b=document.createElement("button");b.type="button";b.className="frame";b.dataset.at=f.at;b.dataset.label=f.label;b.innerHTML=`<img src="${f.path}" alt=""><span>${f.at.toFixed(1)}s ${f.label}</span><span>${f.file}</span>`;b.onclick=()=>{state.time=f.at;state.playing=false;els.play.textContent="播放";renderCanvas()};els.strip.append(b)}}
+    function renderCurrent(){const s=seq(),vs=visible(),idx=vs.findIndex(x=>x.id===s.id);els.select.value=s.id;els.name.textContent=s.title;els.path.textContent=s.frames.map(f=>f.file).join(" | ");els.group.textContent=s.groupName;els.duration.textContent=`${s.duration.toFixed(1)} 秒`;els.index.textContent=idx>=0?`${idx+1} / ${vs.length}`:`- / ${vs.length}`;document.querySelectorAll(".item").forEach(i=>i.classList.toggle("active",i.dataset.id===s.id));els.filters.forEach(b=>b.classList.toggle("active",b.dataset.filter===state.filter));renderFrames();applyZoom();renderCanvas();localStorage.setItem("moonspace-cg-player",s.id);history.replaceState(null,"",`?cg=${encodeURIComponent(s.id)}`)}
+    function selectSeq(id){state.currentId=id;state.time=0;state.playing=false;state.last=0;els.play.textContent="播放";renderCurrent()}
+    function move(step){const vs=visible();if(!vs.length)return;const i=Math.max(0,vs.findIndex(s=>s.id===state.currentId));selectSeq(vs[(i+step+vs.length)%vs.length].id)}
+    function togglePlay(){const s=seq();if(state.time>=s.duration)state.time=0;state.playing=!state.playing;state.last=0;els.play.textContent=state.playing?"暂停":"播放";renderCanvas()}
+    function applyZoom(){els.player.className=`player ${els.zoom.value==="fit"?"":"zoom-"+els.zoom.value}`}
+    function applyBg(){els.wrap.className=`stagewrap ${els.bg.value==="dark"?"":els.bg.value}`}
+    els.select.onchange=e=>selectSeq(e.target.value);els.search.oninput=e=>{state.query=e.target.value;renderList()};els.play.onclick=togglePlay;els.timeline.oninput=e=>{state.time=Number(e.target.value)*seq().duration;state.playing=false;els.play.textContent="播放";renderCanvas()};els.prev.onclick=()=>move(-1);els.next.onclick=()=>move(1);els.zoom.onchange=applyZoom;els.bg.onchange=applyBg;els.filters.forEach(b=>b.onclick=()=>{state.filter=b.dataset.filter;renderList()});window.addEventListener("keydown",e=>{if(e.target.matches("input,select"))return;if(e.code==="Space"){e.preventDefault();togglePlay()}else if(e.key==="ArrowLeft"){state.time=Math.max(0,state.time-.5);renderCanvas()}else if(e.key==="ArrowRight"){state.time=Math.min(seq().duration,state.time+.5);renderCanvas()}});
+    renderList();applyBg();requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
+
+
+
+

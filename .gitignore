@@ -6,6 +6,18 @@
 export_presets.cfg
 *.translation
 
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
 # 导入资源（从 Blender 等）
 *.blend
 *.blend1
