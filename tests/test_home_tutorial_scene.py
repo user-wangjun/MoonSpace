@@ -37,7 +37,7 @@ def test_home_tutorial_sign_adds_rules_and_shows_operation_dialog():
     assert any("不要让角色正面朝向" in line for line in dialogs[-1]["lines"])
     assert not any("没有安装完成" in line for line in dialogs[-1]["lines"])
     assert any("回到地球" in line for line in dialogs[-1]["lines"])
-    assert any("四条规条" in line for line in dialogs[-1]["lines"])
+    assert any("六条规条" in line for line in dialogs[-1]["lines"])
 
 
 def test_home_tutorial_sign_dialog_no_longer_requires_shadow_practice():

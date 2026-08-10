@@ -7,7 +7,7 @@ import pygame
 import config
 from core.input_manager import InputManager
 from utils import palette
-from utils.assets import load_sprite_grid, load_sprite_sheet
+from utils.assets import load_sprite_grid
 from utils.pixel_art import draw_pixel_data
 
 
@@ -65,7 +65,7 @@ class Player:
         *,
         alpha: int = 255,
     ) -> None:
-        """绘制 16×24 伪装使者，优先使用项目 PNG 精灵。"""
+        """绘制伪装使者，优先使用项目大尺寸 PNG 精灵。"""
         x = int(self.rect.x + camera_offset[0])
         y = int(self.rect.y + camera_offset[1])
         try:
@@ -277,10 +277,7 @@ class Player:
         try:
             rows = load_sprite_grid("sprites/moonspace/player_envoy_large.png", 42, 62, 4, 4)
         except (FileNotFoundError, pygame.error, ValueError):
-            frames = load_sprite_sheet("sprites/moonspace/player_envoy.png", 16, 24)
-            facing_offset = {"down": 0, "up": 2, "left": 4, "right": 6}[facing]
-            step = 1 if self.anim_state == "walk" and self.current_frame % 2 == 1 else 0
-            return frames[facing_offset + step]
+            raise FileNotFoundError("player_envoy_large.png is unavailable") from None
 
         row = {"down": 0, "up": 1, "left": 2, "right": 3}[facing]
         col = self.current_frame % 4 if self.anim_state == "walk" else 0

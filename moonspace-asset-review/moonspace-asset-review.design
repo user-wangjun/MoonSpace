@@ -1,0 +1,492 @@
+{
+  "data": [
+    {
+      "id": "page-asset-overview",
+      "title": "资源总览",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 620,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/asset-overview.html",
+        "interactions": [
+          {
+            "domId": "nav-characters",
+            "targetPageId": "page-characters"
+          },
+          {
+            "domId": "nav-environments",
+            "targetPageId": "page-environments"
+          },
+          {
+            "domId": "nav-cg",
+            "targetPageId": "page-cg-endings"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-characters",
+      "title": "角色资源",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 0,
+        "y": 377,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/characters.html",
+        "interactions": [
+          {
+            "domId": "nav-overview",
+            "targetPageId": "page-asset-overview"
+          },
+          {
+            "domId": "nav-environments",
+            "targetPageId": "page-environments"
+          },
+          {
+            "domId": "nav-cg",
+            "targetPageId": "page-cg-endings"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-environments",
+      "title": "场景资源",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 0,
+        "y": 754,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/environments.html",
+        "interactions": [
+          {
+            "domId": "nav-overview",
+            "targetPageId": "page-asset-overview"
+          },
+          {
+            "domId": "nav-characters",
+            "targetPageId": "page-characters"
+          },
+          {
+            "domId": "nav-cg",
+            "targetPageId": "page-cg-endings"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-cg-endings",
+      "title": "CG 与结局",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 0,
+        "y": 1131,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/cg-endings.html",
+        "interactions": [
+          {
+            "domId": "nav-overview",
+            "targetPageId": "page-asset-overview"
+          },
+          {
+            "domId": "nav-characters",
+            "targetPageId": "page-characters"
+          },
+          {
+            "domId": "nav-environments",
+            "targetPageId": "page-environments"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-cg-scene-comparison",
+      "title": "CG 与场景对比",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 0,
+        "y": 2639,
+        "group": 1
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/cg-scene-comparison.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "image-001",
+      "title": "使者精灵（大）· CG 对齐已接入",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 0,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/player-envoy-large.png"
+      }
+    },
+    {
+      "id": "image-002",
+      "title": "吴刚伐桂（大）",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 620,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/wugang-chop-large.png"
+      }
+    },
+    {
+      "id": "image-003",
+      "title": "玉兔捣药（大）",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 1240,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/yutu-pounding-large.png"
+      }
+    },
+    {
+      "id": "image-004",
+      "title": "月宫前院背景（大）",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 1860,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/courtyard-bg-large.png"
+      }
+    },
+    {
+      "id": "image-005",
+      "title": "月桂树",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 2480,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/laurel-tree.png"
+      }
+    },
+    {
+      "id": "image-006",
+      "title": "月池",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 3100,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/moon-pool.png"
+      }
+    },
+    {
+      "id": "image-007",
+      "title": "主菜单背景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 3720,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/main-menu-bg.png"
+      }
+    },
+    {
+      "id": "image-008",
+      "title": "广寒宫内殿",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 4340,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/guanghan-hall.png"
+      }
+    },
+    {
+      "id": "image-009",
+      "title": "嫦娥对话头像",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 4960,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/chang-e-dialog.png"
+      }
+    },
+    {
+      "id": "image-010",
+      "title": "吴刚对话头像",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 5580,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/wugang-dialog.png"
+      }
+    },
+    {
+      "id": "image-011",
+      "title": "玉兔对话头像",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 6200,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/yutu-dialog.png"
+      }
+    },
+    {
+      "id": "image-012",
+      "title": "HE CG：返回地球",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 6820,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/cg-he-earth-return.png"
+      }
+    },
+    {
+      "id": "image-013",
+      "title": "BE CG：吴刚污染",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 7440,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/cg-be-wugang.png"
+      }
+    },
+    {
+      "id": "image-014",
+      "title": "BE CG：玉兔污染",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 8060,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/cg-be-yutu.png"
+      }
+    },
+    {
+      "id": "image-015",
+      "title": "BE CG：双重污染",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 8680,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/cg-be-double.png"
+      }
+    },
+    {
+      "id": "image-016",
+      "title": "BE CG：留下来等",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 9300,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/cg-be-wait.png"
+      }
+    },
+    {
+      "id": "image-017",
+      "title": "复命过场 CG",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 9920,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/cg-report-staging.png"
+      }
+    },
+    {
+      "id": "image-020",
+      "title": "开场 CG：月光",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 11780,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/opening-cg-moonlight.png"
+      }
+    },
+    {
+      "id": "image-021",
+      "title": "开场 CG：血月",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 12400,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/opening-cg-blood-moon.png"
+      }
+    },
+    {
+      "id": "image-022",
+      "title": "开场 CG：房间",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 13020,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/opening-cg-room.png"
+      }
+    },
+    {
+      "id": "image-023",
+      "title": "开场 CG：黑屏",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 13640,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/opening-cg-blackout.png"
+      }
+    },
+    {
+      "id": "image-025",
+      "title": "嫦娥 16 帧",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 14880,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/chang-e-16frames.png"
+      }
+    },
+    {
+      "id": "image-026",
+      "title": "场景切换画面",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 15500,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/scene-transition.png"
+      }
+    },
+    {
+      "id": "image-027",
+      "title": "月谷教程背景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 16120,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/home-tutorial-bg.png"
+      }
+    },
+    {
+      "id": "image-028",
+      "title": "宫墙背景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1751802000000,
+      "canvasData": {
+        "x": 16740,
+        "y": 3016
+      },
+      "devMetadata": {
+        "imageSrc": "assets/palace-wall-bg.png"
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "MoonSpace 美术资源审查",
+    "designLibrary": null
+  }
+}

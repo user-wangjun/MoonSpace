@@ -22,7 +22,7 @@ class HomeTutorialScene:
 
     SIGN_DIALOG_LINES = [
         "月宫把你记成凌霄来使；想回到地球，必须按它的规条活到门开。",
-        "四条规条已经刻入手册：树、兔、池水，以及会流泪的月桂。",
+        "六条规条已经刻入手册：流程、稽首、避视、月池、月桂流血与不得候宫。",
         *[f"规条：{rule_text}" for rule_text in BASIC_RULES.values()],
         "方法：不要让角色正面朝向正在捣药的玉兔。",
         "操作：用 W/A/S/D 或方向键转身、绕开；Tab 可以随时打开规则手册。",

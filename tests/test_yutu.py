@@ -6,6 +6,7 @@ import config
 from core.event_bus import DIALOG_ACTIVE_CHANGED, EventBus, YUTU_POUNDING_CHANGED
 from entities.yutu import Yutu
 from utils import palette
+from utils.assets import load_image
 
 
 def test_yutu_keeps_pounding_when_player_near_so_eye_contact_rule_remains_active():
@@ -77,3 +78,15 @@ def test_yutu_draw_uses_png_pounding_sprite():
         if surface.get_at((x, y)).a > 0
     }
     assert len(colors) > 20
+
+
+def test_yutu_normal_draw_uses_separate_body_and_pestle_layers():
+    assert Yutu.BODY_SPRITE_PATH != Yutu.LEGACY_LARGE_SPRITE_PATH
+    assert load_image(Yutu.BODY_SPRITE_PATH).get_size() == (256, 312)
+    assert load_image(Yutu.PESTLE_OVERLAY_PATH).get_size() == (256, 312)
+
+
+def test_yutu_visual_anchor_includes_layer_alignment_offset():
+    yutu = Yutu(EventBus(), 700, 300)
+
+    assert yutu.get_visual_rect().centerx == yutu.rect.centerx + Yutu.DRAW_OFFSET_X

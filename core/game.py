@@ -66,10 +66,30 @@ class Game:
         "report_completed": False,
         "return_countdown_active": False,
         "return_countdown_remaining": 0.0,
+        "return_departed_on_time": False,
         "pending_pool_ending": "",
         "ending": "",
         "broken_jade_obtained": False,
     }
+    REPORT_STAGING_ASSETS = (
+        "report_01_enter_hall.png",
+        "report_02_walk_forward.png",
+        "report_03_stop_before_chang_e.png",
+        "report_04_formal_bow.png",
+        "report_05_present_records.png",
+        "report_06_chang_e_receives_records.png",
+        "report_07_records_on_desk.png",
+    )
+    REPORT_SHOT_DURATION = 1.2
+    REPORT_STAGING_DURATION = 8.4
+    REPORT_AUDIO_CUES = (
+        (0.0, "cg_palace_transition"),
+        (4.8, "cg_wugang_axe"),
+        (6.0, "cg_yutu_pestle"),
+    )
+    # 透明图集单帧的实际 Alpha 高度约为主角的 1.5～1.6 倍；
+    # 以 100×100 绘制，避免按整张图集留白直接放大成近 2 倍身高。
+    CHANG_E_WORLD_FRAME_SIZE = (100, 100)
 
     def __init__(self) -> None:
         pygame.init()
@@ -92,8 +112,8 @@ class Game:
         self.save_manager = SaveManager()
         self.main_menu = MainMenu()
         self.save_menu = SaveMenu(self.save_manager)
-        self.opening_cg = OpeningCG()
-        self.ending_cg = EndingCG()
+        self.opening_cg = OpeningCG(self.audio)
+        self.ending_cg = EndingCG(self.audio)
         self.envoy_register = EnvoyRegister()
         self.scene_transition = SceneTransition()
         self.mode = self.MODE_MAIN_MENU
@@ -104,16 +124,29 @@ class Game:
         self.exit_confirm_open = False
         self.report_staging_active = False
         self.report_staging_timer = 0.0
-        self.report_staging_duration = 2.8
+        self.report_staging_duration = self.REPORT_STAGING_DURATION
         self.pending_report_dialog: tuple[str, list[str], str] | None = None
         self.report_started = False
-        # 登记台上移并缩小；交互区放在玩家自然接近的桌前，而不是藏在最右侧。
-        self.guanghan_register_desk_rect = pygame.Rect(300, 270, 180, 101)
-        self.guanghan_register_collision_rect = pygame.Rect(310, 282, 160, 89)
-        self.guanghan_register_rect = pygame.Rect(396, 371, 52, 28)
-        self.guanghan_report_rect = pygame.Rect(408, 72, 144, 126)
-        self.guanghan_exit_rect = pygame.Rect(428, 610, 104, 94)
-        self.courtyard_south_exit_rect = pygame.Rect(420, 500, 120, 120)
+        self._report_audio_cues_played: set[str] = set()
+        # 广寒宫唯一可行走背景是俯视帷幕图；交互点按该图的地面、台阶和南门重新校准。
+        # 正面王座图仍保留为 CG 候选，不参与世界坐标或碰撞。
+        self.guanghan_register_desk_rect = pygame.Rect(160, 300, 180, 96)
+        self.guanghan_register_collision_rect = pygame.Rect(170, 316, 160, 80)
+        # 记录台与验牒分别位于桌前两侧，侧面也保留可接近的窄入口。
+        self.guanghan_records_rect = pygame.Rect(180, 404, 64, 26)
+        self.guanghan_records_side_rect = pygame.Rect(132, 372, 52, 58)
+        self.guanghan_register_rect = pygame.Rect(252, 404, 64, 26)
+        self.guanghan_register_side_rect = pygame.Rect(308, 372, 52, 58)
+        # 复命点在北侧台阶前的地面；玩家不能站到王座、台阶或帷幕立面上。
+        self.guanghan_report_rect = pygame.Rect(410, 244, 140, 56)
+        # 南门交互区位于门楼前的地面边缘，进入后会回到前院，不穿过门楼立面。
+        self.guanghan_exit_rect = pygame.Rect(420, 450, 120, 40)
+        self.courtyard_south_exit_rect = pygame.Rect(420, 380, 120, 40)
+        self.guanghan_walkable_background = "sprites/moonspace/backgrounds/guanghan_hall_curtain.png"
+        self.guanghan_cg_background = "sprites/moonspace/backgrounds/guanghan_hall.png"
+        self.chang_e_sheet_path = "sprites/moonspace/sheets/chang_e_16frames_transparent.png"
+        self._chang_e_frames: list[pygame.Surface] | None = None
+        self._chang_e_time = 0.0
 
         self.tile_map = TileMap()
         self.player = Player(config.PLAYER_START_X, config.PLAYER_START_Y)
@@ -135,7 +168,7 @@ class Game:
         self.dialog_box = DialogBox(self.event_bus)
         self.rule_book = RuleBook(self.event_bus, self.game_state)
         self.broken_jade_view = BrokenJadeView()
-        self.death_screen = DeathScreen(self.event_bus, self.game_state)
+        self.death_screen = DeathScreen(self.event_bus, self.game_state, self.audio)
         self.distortion = DistortionEffect(self.event_bus)
         self.event_bus.subscribe(TREE_BLEEDING, self._on_tree_bleeding)
         self.event_bus.subscribe(VIOLATION_CHANGED, self._on_violation_changed)
@@ -231,9 +264,6 @@ class Game:
         if self._try_trigger_he_return():
             self.distortion.update(dt)
             return
-        if self._update_return_countdown(dt):
-            self.distortion.update(dt)
-            return
 
         was_sign_read = self.home_tutorial.sign_read
         was_rules_briefing_complete = self.home_tutorial.rules_briefing_complete
@@ -257,8 +287,9 @@ class Game:
 
     def _update_guanghan(self, dt: float) -> None:
         """更新广寒宫内殿基础状态。"""
+        self._chang_e_time += dt
         if self.envoy_register.active:
-            if self.envoy_register.update(self.input_manager):
+            if self.envoy_register.update(self.input_manager, dt):
                 self._save_current_slot()
             self.distortion.update(dt)
             return
@@ -279,8 +310,12 @@ class Game:
             return
         if self.input_manager.was_pressed(config.ACTION_INTERACT):
             self.player.trigger_interact_animation()
-            if self.guanghan_register_rect.colliderect(self.player.rect):
-                self.envoy_register.open()
+            if self._player_in_guanghan_records_zone():
+                self.envoy_register.open_records()
+                self.distortion.update(dt)
+                return
+            if self._player_in_guanghan_register_zone():
+                self.envoy_register.open_register()
                 self.distortion.update(dt)
                 return
             if self.guanghan_report_rect.colliderect(self.player.rect) and not self.report_started:
@@ -336,7 +371,7 @@ class Game:
 
         if self.input_manager.was_pressed(config.ACTION_INTERACT):
             self.player.trigger_interact_animation()
-            if self.mainline.get("pending_pool_ending") and self.moon_pool.reflection_rect.colliderect(
+            if self.mainline.get("pending_pool_ending") and self.moon_pool.rect.colliderect(
                 self.player.rect
             ):
                 self._try_trigger_pending_pool_ending()
@@ -444,7 +479,11 @@ class Game:
         """返回跟随玩家且被大地图边界限制的世界偏移。"""
         world_width, world_height = self._scene_world_size()
         camera_x = self.player.rect.centerx - config.SCREEN_WIDTH // 2
-        camera_y = self.player.rect.centery - config.SCREEN_HEIGHT // 2
+        if self.mode == self.MODE_GUANGHAN:
+            # 内殿纵深大于视口；把来使放在画面下方，保留北侧帷幕和复命人物。
+            camera_y = self.player.rect.centery - int(config.SCREEN_HEIGHT * 0.8)
+        else:
+            camera_y = self.player.rect.centery - config.SCREEN_HEIGHT // 2
         camera_x = max(0, min(world_width - config.SCREEN_WIDTH, camera_x))
         camera_y = max(0, min(world_height - config.SCREEN_HEIGHT, camera_y))
         distortion_x = round(self.distortion.camera_offset.x)
@@ -474,8 +513,15 @@ class Game:
             anomaly_sprite=anomaly_sprite,
             observer_center=self.player.rect.center,
             show_reflection=show_pool_reflection,
+            show_pollution=bool(
+                self.mainline.get("pending_pool_ending")
+                or self.mainline.get("wugang_polluted")
+                or self.mainline.get("yutu_polluted")
+            ),
         )
-        self.pound_table.draw(self.game_surface, camera_offset)
+        # The mortar is a static prop: draw its rear before depth sorting and
+        # its front rim after the body/hand overlay to prevent repetition.
+        self.pound_table.draw_back(self.game_surface, camera_offset)
         depth_items = [(self.laurel_tree.get_collision_rect().bottom, self.laurel_tree.draw)]
         depth_items.extend((npc.get_collision_rect().bottom, npc.draw) for npc in self.npcs)
         depth_items.append(
@@ -486,6 +532,7 @@ class Game:
         )
         for _, draw_item in sorted(depth_items, key=lambda item: item[0]):
             draw_item(self.game_surface, camera_offset)
+        self.pound_table.draw_front(self.game_surface, camera_offset)
         self.distortion.draw_overlay(self.game_surface)
         self._draw_interaction_hint(self.game_surface)
         self._draw_status_ui(self.game_surface)
@@ -513,24 +560,21 @@ class Game:
         self.envoy_register.draw(self.game_surface)
 
     def _draw_guanghan_background(self, camera_offset: tuple[int, int] = (0, 0)) -> bool:
-        """绘制确认后的广寒宫内殿背景；缺失时回退到占位场景。"""
+        """绘制唯一可行走的俯视广寒宫背景；正面图不进入世界坐标系。"""
         try:
-            background_path = (
-                "sprites/moonspace/backgrounds/guanghan_hall.png"
-                if self.envoy_register.registered
-                else "sprites/moonspace/backgrounds/guanghan_hall_curtain.png"
-            )
-            background = load_image(background_path)
+            background = load_image(self.guanghan_walkable_background)
         except (FileNotFoundError, pygame.error):
             return False
         hall_size = (config.GUANGHAN_WIDTH, config.GUANGHAN_HEIGHT)
         if background.get_size() != hall_size:
-            background = pygame.transform.smoothscale(background, hall_size)
+            # 世界图尺寸不匹配时宁可回退，也不把正面构图非等比拉伸成地图。
+            return False
         self.game_surface.blit(background, camera_offset)
         return True
 
     def _draw_guanghan_actors(self, camera_offset: tuple[int, int]) -> None:
-        """绘制内殿独立物件；嫦娥保持在北侧帷幕后。"""
+        """绘制内殿独立物件；嫦娥使用现有透明 16 帧素材站在北侧帷幕后。"""
+        self._draw_guanghan_chang_e(camera_offset)
         desk_sprite = self._get_guanghan_register_desk_sprite()
         desk_overlap = self.guanghan_register_desk_rect.colliderect(self.player.rect.inflate(8, 8))
         player_behind_desk = self.player.rect.bottom <= self.guanghan_register_desk_rect.bottom
@@ -544,6 +588,35 @@ class Game:
                 alpha=150 if desk_overlap else 255,
             )
         self._draw_guanghan_interaction_hint()
+
+    def _draw_guanghan_chang_e(self, camera_offset: tuple[int, int]) -> None:
+        """绘制嫦娥的现有透明帧，不使用带绿幕的同名图集。"""
+        if self._chang_e_frames is None:
+            try:
+                sheet = load_image(self.chang_e_sheet_path)
+                sheet_width, sheet_height = sheet.get_size()
+                frames = []
+                for row in range(4):
+                    for col in range(4):
+                        left = round(col * sheet_width / 4)
+                        top = round(row * sheet_height / 4)
+                        right = round((col + 1) * sheet_width / 4)
+                        bottom = round((row + 1) * sheet_height / 4)
+                        frame = pygame.Surface((right - left, bottom - top), pygame.SRCALPHA)
+                        frame.blit(sheet, (0, 0), pygame.Rect(left, top, right - left, bottom - top))
+                        frames.append(frame)
+                self._chang_e_frames = frames
+            except (FileNotFoundError, pygame.error, ValueError):
+                self._chang_e_frames = []
+        if not self._chang_e_frames:
+            return
+
+        frame_index = int(self._chang_e_time * 2.0) % 16
+        frame = self._chang_e_frames[frame_index]
+        # 图集帧带有留白；按实际 Alpha 高度收敛到主角约 1.5～1.6 倍。
+        frame = pygame.transform.smoothscale(frame, self.CHANG_E_WORLD_FRAME_SIZE)
+        destination = frame.get_rect(midbottom=(480 + camera_offset[0], 184 + camera_offset[1]))
+        self.game_surface.blit(frame, destination)
 
     def _get_guanghan_register_desk_sprite(self) -> pygame.Surface | None:
         """返回按场景比例缩放后的登记台；较窄的玉简随桌面一起细化。"""
@@ -574,10 +647,12 @@ class Game:
     def _draw_guanghan_interaction_hint(self) -> None:
         if self.envoy_register.active or self.dialog_box.active or self.report_staging_active:
             return
-        if self.guanghan_register_rect.colliderect(self.player.rect):
-            text = "E 登记 / 查看"
+        if self._player_in_guanghan_records_zone():
+            text = "E 查看旧卷"
+        elif self._player_in_guanghan_register_zone():
+            text = "E 验牒身份"
         elif self.guanghan_report_rect.colliderect(self.player.rect) and not self.report_started:
-            text = "E 先登记" if not self.envoy_register.registered else "E 向嫦娥复命"
+            text = "E 向嫦娥复命"
         elif self.guanghan_exit_rect.colliderect(self.player.rect):
             text = "E 离殿"
         else:
@@ -588,31 +663,57 @@ class Game:
         draw_double_rect(self.game_surface, panel, palette.MOON_WHITE, palette.DEEP_BLUE)
         render_text(self.game_surface, text, panel.x + 8, panel.y + 3, 11, palette.MOON_WHITE)
 
+    def _player_in_guanghan_records_zone(self) -> bool:
+        """旧卷可从桌前左侧或登记台左侧接近。"""
+        return any(
+            rect.colliderect(self.player.rect)
+            for rect in (self.guanghan_records_rect, self.guanghan_records_side_rect)
+        )
+
+    def _player_in_guanghan_register_zone(self) -> bool:
+        """身份登记可从桌前右侧或登记台右侧接近。"""
+        return any(
+            rect.colliderect(self.player.rect)
+            for rect in (self.guanghan_register_rect, self.guanghan_register_side_rect)
+        )
+
     def _guanghan_collision_rects(self) -> list[pygame.Rect]:
-        """限制玩家在内殿边界内，并阻挡高台与登记台。"""
+        """按俯视帷幕图阻挡高台、台阶、门楼立面和登记台。"""
         return [
-            pygame.Rect(0, 0, config.GUANGHAN_WIDTH, 120),
+            pygame.Rect(0, 0, config.GUANGHAN_WIDTH, 112),
             pygame.Rect(0, 0, 40, config.GUANGHAN_HEIGHT),
             pygame.Rect(config.GUANGHAN_WIDTH - 40, 0, 40, config.GUANGHAN_HEIGHT),
             pygame.Rect(0, config.GUANGHAN_HEIGHT - 4, config.GUANGHAN_WIDTH, 4),
-            pygame.Rect(0, 470, self.guanghan_exit_rect.left, 250),
+            pygame.Rect(0, 480, self.guanghan_exit_rect.left, 240),
             pygame.Rect(
                 self.guanghan_exit_rect.right,
-                470,
+                480,
                 config.GUANGHAN_WIDTH - self.guanghan_exit_rect.right,
-                250,
+                240,
             ),
+            pygame.Rect(self.guanghan_exit_rect.left, 480, self.guanghan_exit_rect.width, 240),
+            pygame.Rect(330, 92, 300, 86),
+            pygame.Rect(350, 178, 260, 62),
             self.guanghan_register_collision_rect.copy(),
         ]
 
     def _draw_report_staging(self, surface: pygame.Surface) -> None:
         """绘制复命 staging CG 和对应字幕。"""
+        staging = None
+        shot_index = self.report_shot_index_at(self.report_staging_timer)
         try:
-            staging = load_image("sprites/moonspace/cg/report_staging.png")
+            staging = load_image(f"sprites/moonspace/cg/{self.REPORT_STAGING_ASSETS[shot_index]}")
+        except (FileNotFoundError, pygame.error):
+            try:
+                staging = load_image("sprites/moonspace/cg/report_staging.png")
+            except (FileNotFoundError, pygame.error):
+                staging = None
+
+        if staging is not None:
             if staging.get_size() != surface.get_size():
                 staging = pygame.transform.smoothscale(staging, surface.get_size())
             surface.blit(staging, (0, 0))
-        except (FileNotFoundError, pygame.error):
+        else:
             shade = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
             shade.fill((*palette.BLACK, 170))
             surface.blit(shade, (0, 0))
@@ -620,9 +721,19 @@ class Game:
         caption = self.pending_report_dialog[2] if self.pending_report_dialog else "来使递上两份职司记录。"
         panel = pygame.Surface((config.SCREEN_WIDTH, 34), pygame.SRCALPHA)
         panel.fill((*palette.BLACK, 182))
-        surface.blit(panel, (0, config.SCREEN_HEIGHT - 42))
-        render_text(surface, caption, 22, config.SCREEN_HEIGHT - 32, 13, palette.PALE_MOON)
+        # Keep the bottom 34 px as a dedicated safe band; the handoff props
+        # in R5-R7 end above y=236, so the subtitle never covers them.
+        surface.blit(panel, (0, config.SCREEN_HEIGHT - 34))
+        render_text(surface, caption, 22, config.SCREEN_HEIGHT - 24, 13, palette.PALE_MOON)
         render_text(surface, "E 跳过", 418, 10, 11, palette.ASH_GRAY)
+
+    @classmethod
+    def report_shot_index_at(cls, timer: float) -> int:
+        """Return the fixed 1.2-second report shot for a timestamp."""
+        return min(
+            len(cls.REPORT_STAGING_ASSETS) - 1,
+            max(0, int(max(0.0, timer) / cls.REPORT_SHOT_DURATION)),
+        )
 
     def _draw_home(self) -> None:
         """绘制 home 教程地图、玩家和轻量操作提示。"""
@@ -633,7 +744,6 @@ class Game:
         self.distortion.draw_overlay(self.game_surface)
         self._draw_home_hint(self.game_surface, camera_offset)
         self._draw_home_status_ui(self.game_surface)
-        self._draw_return_countdown_hud(self.game_surface)
         self.rule_book.draw(self.game_surface)
         self.dialog_box.draw(self.game_surface)
 
@@ -747,6 +857,8 @@ class Game:
 
     def _apply_save_data(self, data: dict) -> None:
         """把存档数据应用到当前游戏对象。"""
+        data = self._migrate_save_data(data)
+        self.current_save_data = data
         self._reset_runtime_state()
         player_data = data.get("player", {})
         self.player = Player(player_data.get("x", config.PLAYER_START_X), player_data.get("y", config.PLAYER_START_Y))
@@ -785,9 +897,75 @@ class Game:
         self.distortion.restore_violation_count(self.game_state.violation_count)
         self._setup_rule_zones()
 
+    def _migrate_save_data(self, data: dict) -> dict:
+        """兼容早期平铺字段，并把已离宫存档的旧倒计时收束为稳定状态。"""
+        migrated = dict(data)
+
+        envoy_register = migrated.get("envoy_register")
+        if not isinstance(envoy_register, dict):
+            envoy_register = {}
+        if "registered" not in envoy_register and "envoy_registered" in migrated:
+            envoy_register["registered"] = migrated["envoy_registered"]
+        if "name" not in envoy_register and "envoy_name" in migrated:
+            envoy_register["name"] = migrated["envoy_name"]
+        migrated["envoy_register"] = envoy_register
+
+        mainline = migrated.get("mainline")
+        if not isinstance(mainline, dict):
+            mainline = {}
+        for key in (
+            "report_completed",
+            "return_countdown_active",
+            "return_departed_on_time",
+            "pending_pool_ending",
+            "ending",
+        ):
+            if key not in mainline and key in migrated:
+                mainline[key] = migrated[key]
+
+        if "return_countdown_remaining" not in mainline:
+            if "return_countdown" in mainline:
+                mainline["return_countdown_remaining"] = mainline["return_countdown"]
+            elif "return_countdown" in migrated:
+                mainline["return_countdown_remaining"] = migrated["return_countdown"]
+        if "return_countdown_remaining" not in mainline:
+            mainline["return_countdown_remaining"] = 0.0
+        if "return_countdown_active" not in mainline:
+            mainline["return_countdown_active"] = bool(
+                mainline.get("report_completed") and float(mainline["return_countdown_remaining"]) > 0
+            )
+        if "return_departed_on_time" not in mainline:
+            mainline["return_departed_on_time"] = bool(
+                migrated.get("return_to_moon_valley_before_timer", False)
+            )
+
+        # 旧版本离殿后仍保留 active=true；显式 scene 已在前院或月谷时，
+        # 将其解释为“已经及时离宫”，避免旧倒计时在新版本重新复活。
+        scene = migrated.get("scene")
+        if (
+            scene in (self.MODE_HOME, self.MODE_PLAYING)
+            and mainline.get("report_completed")
+            and mainline.get("return_countdown_active")
+            and not mainline.get("pending_pool_ending")
+        ):
+            mainline["return_departed_on_time"] = True
+        if mainline.get("return_departed_on_time"):
+            mainline["return_countdown_active"] = False
+            mainline["return_countdown_remaining"] = 0.0
+
+        # 旧版本把双污染结局写成 be_laurel_mixed；运行时规范名改为
+        # be_double，但保留旧存档的可读性和继续播放能力。
+        for key in ("pending_pool_ending", "ending"):
+            if mainline.get(key) == "be_laurel_mixed":
+                mainline[key] = "be_double"
+
+        migrated["mainline"] = mainline
+        return migrated
+
     def _reset_runtime_state(self) -> None:
         """切换槽位时清除不会写入存档的动画、交互和音频状态。"""
         self.audio.stop_ambient()
+        self.audio.stop_cg_sounds()
         self.opening_cg.active = False
         self.ending_cg.active = False
         self.scene_transition.active = False
@@ -805,6 +983,7 @@ class Game:
         self.moon_pool.reflection_flash_timer = 0.0
         self.laurel_tree._time = 0.0
         self.palace_wall._time = 0.0
+        self._chang_e_time = 0.0
 
     def _move_player_outside_moon_pool(self) -> None:
         """迁移旧存档中落在中央月池碰撞区里的玩家。"""
@@ -939,6 +1118,8 @@ class Game:
 
     def _draw_return_countdown_hud(self, surface: pygame.Surface) -> None:
         """绘制复命后的候月倒计时，保持文案有误导性但不直说逃离。"""
+        if self.mode != self.MODE_GUANGHAN:
+            return
         if not self.mainline.get("return_countdown_active", False):
             return
         remaining = max(0, int(float(self.mainline.get("return_countdown_remaining", 0.0))))
@@ -1050,6 +1231,28 @@ class Game:
         if not self.palace_entry_rect.colliderect(self.player.rect):
             return False
 
+        if self.mainline.get("pending_pool_ending"):
+            self.event_bus.emit(
+                SHOW_DIALOG,
+                speaker_id="palace_gate",
+                lines=[
+                    "池水尚未照验，广寒宫不再收回这份复命。",
+                    "先去月池完成裁决，南门暂不通往月谷。",
+                ],
+            )
+            return True
+
+        if self.mainline.get("return_departed_on_time"):
+            self.event_bus.emit(
+                SHOW_DIALOG,
+                speaker_id="palace_gate",
+                lines=[
+                    "复命既毕，来使不得重入广寒宫。",
+                    "请回月谷祭坛，归路正在等你。",
+                ],
+            )
+            return True
+
         if not self._office_checks_complete():
             self.event_bus.emit(
                 SHOW_DIALOG,
@@ -1087,13 +1290,6 @@ class Game:
                 lines=["两项职司尚未验明，来使不可复命。"],
             )
             return
-        if not self.envoy_register.registered:
-            self.event_bus.emit(
-                SHOW_DIALOG,
-                speaker_id="change",
-                lines=["帷幕没有打开。", "先去登记台登记来使身份，再来复命。"],
-            )
-            return
         self.report_started = True
         if self.mainline["wugang_polluted"] or self.mainline["yutu_polluted"]:
             self._start_polluted_report()
@@ -1106,10 +1302,12 @@ class Game:
         wugang_polluted = self.mainline.get("wugang_polluted", False)
         yutu_polluted = self.mainline.get("yutu_polluted", False)
         self.mainline["report_completed"] = False
+        self.mainline["return_departed_on_time"] = False
         self.mainline["return_countdown_active"] = False
         self.mainline["return_countdown_remaining"] = 0.0
+        self.mainline["pending_pool_ending"] = ""
         if wugang_polluted and yutu_polluted:
-            self.mainline["pending_pool_ending"] = "be_laurel_mixed"
+            self.mainline["pending_pool_ending"] = "be_double"
             caption = "两份记录在月光中叠成同一处污痕。"
             lines = [
                 "嫦娥隔着帘影听完复命。",
@@ -1141,13 +1339,20 @@ class Game:
         self.report_staging_active = True
         self.report_staging_timer = 0.0
         self.pending_report_dialog = (speaker_id, list(lines), caption)
+        self._report_audio_cues_played.clear()
+        self.audio.begin_cg_cycle()
+        self._emit_report_audio_cues()
 
     def _update_report_staging(self, dt: float) -> None:
         """推进或跳过复命 staging CG。"""
         if not self.report_staging_active:
             return
-        self.report_staging_timer += dt
-        if self.input_manager.was_pressed(config.ACTION_INTERACT) or self.report_staging_timer >= self.report_staging_duration:
+        self.report_staging_timer = min(
+            self.report_staging_duration,
+            self.report_staging_timer + max(0.0, dt),
+        )
+        self._emit_report_audio_cues()
+        if self.input_manager.was_pressed(config.ACTION_INTERACT) or self.report_staging_timer >= self.report_staging_duration - 1e-6:
             self._finish_report_staging()
 
     def _finish_report_staging(self) -> None:
@@ -1159,7 +1364,17 @@ class Game:
         self.report_staging_active = False
         self.report_staging_timer = 0.0
         self.pending_report_dialog = None
+        self._report_audio_cues_played.clear()
+        self.audio.stop_cg_sounds()
         self.event_bus.emit(SHOW_DIALOG, speaker_id=speaker_id, lines=lines)
+
+    def _emit_report_audio_cues(self) -> None:
+        """Trigger report shot cues once, including when a frame skips a boundary."""
+        for boundary, key in self.REPORT_AUDIO_CUES:
+            token = f"report:{boundary}:{key}"
+            if self.report_staging_timer >= boundary and token not in self._report_audio_cues_played:
+                self._report_audio_cues_played.add(token)
+                self.audio.play_cg_cue(key, token=token)
 
     def _try_trigger_pending_pool_ending(self) -> bool:
         """污染复命结束后，离殿触发池边异常 BE。"""
@@ -1189,6 +1404,10 @@ class Game:
                 return False
             if float(self.mainline.get("return_countdown_remaining", 0.0)) <= 0.0:
                 return False
+            # 离宫这一刻就是候月流程的终点；之后任何场景都不得再更新或显示它。
+            self.mainline["return_departed_on_time"] = True
+            self.mainline["return_countdown_active"] = False
+            self.mainline["return_countdown_remaining"] = 0.0
 
         self.mode = self.MODE_PLAYING
         self.exit_confirm_open = False
@@ -1201,6 +1420,19 @@ class Game:
 
     def _leave_courtyard_to_home(self) -> None:
         """从广场南门返回月谷，保持两道门的空间顺序。"""
+        if self.mainline.get("pending_pool_ending"):
+            self._show_courtyard_exit_blocked_for_pool()
+            return
+        if not self.mainline.get("return_departed_on_time", False):
+            self.event_bus.emit(
+                SHOW_DIALOG,
+                speaker_id="courtyard_gate",
+                lines=[
+                    "复命未毕，南门的月光不通。",
+                    "先入广寒宫复命，再返月谷。",
+                ],
+            )
+            return
         self.mode = self.MODE_HOME
         self.exit_confirm_open = False
         self.dialog_box.active = False
@@ -1212,8 +1444,21 @@ class Game:
         self.player.facing = "down"
         self._save_current_slot()
 
+    def _show_courtyard_exit_blocked_for_pool(self) -> None:
+        """污染复命待裁决时，明确告知玩家必须去月池。"""
+        self.event_bus.emit(
+            SHOW_DIALOG,
+            speaker_id="courtyard_gate",
+            lines=[
+                "月池尚未照验，南门被月光封住。",
+                "先去月池完成裁决，来使不得返月谷。",
+            ],
+        )
+
     def _update_return_countdown(self, dt: float) -> bool:
         """推进复命后的候月倒计时；归零时触发嫦娥 BE。"""
+        if self.mode != self.MODE_GUANGHAN or self.mainline.get("return_departed_on_time", False):
+            return False
         if not self.mainline.get("return_countdown_active", False):
             return False
         remaining = float(self.mainline.get("return_countdown_remaining", 0.0))
@@ -1224,19 +1469,22 @@ class Game:
         return False
 
     def _try_trigger_he_return(self) -> bool:
-        """复命后在候月归零前主动离宫，触发 HE。"""
+        """完成清白复命、及时离宫并回到月谷祭坛后触发 HE。"""
         if self.mainline.get("ending"):
             return False
         if not self.mainline.get("report_completed", False):
             return False
-        if not self.mainline.get("return_countdown_active", False):
+        if self.mainline.get("wugang_polluted") or self.mainline.get("yutu_polluted"):
             return False
-        if float(self.mainline.get("return_countdown_remaining", 0.0)) <= 0.0:
+        if self.mainline.get("pending_pool_ending"):
+            return False
+        if not self.mainline.get("return_departed_on_time", False):
             return False
         if self.mode != self.MODE_HOME or not self.home_tutorial.altar_rect.colliderect(self.player.rect):
             return False
 
         self.mainline["return_countdown_active"] = False
+        self.mainline["return_countdown_remaining"] = 0.0
         self.mainline["ending"] = "he_return_earth"
         self.dialog_box.active = False
         self.ending_cg.start("he_return_earth")
@@ -1259,15 +1507,18 @@ class Game:
     def _start_normal_report(self) -> None:
         """无污染时完成正常复命，并启动候月倒计时。"""
         self.mainline["report_completed"] = True
+        self.mainline["return_departed_on_time"] = False
         self.mainline["return_countdown_active"] = True
         self.mainline["return_countdown_remaining"] = 60.0
+        self.mainline["pending_pool_ending"] = ""
         self._start_report_staging(
             "change",
             [
                 "嫦娥没有看你，她看着你身后的月光。",
                 "吴刚斧声未绝，玉兔杵声未停。",
                 "来使的记录，月宫收下了。",
-                "复命既毕，使者可候月落。待这一轮月光尽了，归路自会显明。",
+                "复命既毕，使者可候月落。",
+                "待这一轮月光尽了，归路自会显明。",
             ],
             "两份职司记录被月光托起，递入广寒宫深处。",
         )
@@ -1411,23 +1662,32 @@ class Game:
         """收集地图、世界物体和 NPC 碰撞。"""
         rects = [obj.get_collision_rect() for obj in self.world_objects]
         rects.extend(npc.get_collision_rect() for npc in self.npcs)
-        # 南墙只在门洞两侧阻挡，中央门洞保留交互与通行空间。
-        rects.extend(
-            [
-                pygame.Rect(
-                    0,
-                    450,
-                    self.courtyard_south_exit_rect.left,
-                    config.COURTYARD_HEIGHT - 450,
-                ),
-                pygame.Rect(
-                    self.courtyard_south_exit_rect.right,
-                    450,
-                    config.COURTYARD_WIDTH - self.courtyard_south_exit_rect.right,
-                    config.COURTYARD_HEIGHT - 450,
-                ),
-            ]
-        )
+        # 南门正常路线保留中央交互口；污染待裁决时整段南墙封闭，必须去月池。
+        if self.mainline.get("pending_pool_ending"):
+            rects.append(pygame.Rect(0, 420, config.COURTYARD_WIDTH, config.COURTYARD_HEIGHT - 420))
+        else:
+            rects.extend(
+                [
+                    pygame.Rect(
+                        0,
+                        420,
+                        self.courtyard_south_exit_rect.left,
+                        config.COURTYARD_HEIGHT - 420,
+                    ),
+                    pygame.Rect(
+                        self.courtyard_south_exit_rect.right,
+                        420,
+                        config.COURTYARD_WIDTH - self.courtyard_south_exit_rect.right,
+                        config.COURTYARD_HEIGHT - 420,
+                    ),
+                    pygame.Rect(
+                        self.courtyard_south_exit_rect.left,
+                        420,
+                        self.courtyard_south_exit_rect.width,
+                        config.COURTYARD_HEIGHT - 420,
+                    ),
+                ]
+            )
         return rects
 
     def _draw_palace_entry_marker(self, surface: pygame.Surface, camera_offset: tuple[int, int]) -> None:
@@ -1468,7 +1728,7 @@ class Game:
                 self.courtyard_south_exit_rect.top + camera_y - 3,
             )
             return hint_rect
-        if self.mainline.get("pending_pool_ending") and self.moon_pool.reflection_rect.colliderect(
+        if self.mainline.get("pending_pool_ending") and self.moon_pool.rect.colliderect(
             self.player.rect
         ):
             hint_rect = pygame.Rect(0, 0, 32, 10)
@@ -1528,6 +1788,9 @@ class Game:
 
     def _reset_after_death(self) -> None:
         """死亡后重启当前 Demo 场景的关键状态。"""
+        self.death_screen.active = False
+        self.death_screen.fade_timer = 0.0
+        self.audio.stop_cg_sounds()
         self.player = Player(config.PLAYER_START_X, config.PLAYER_START_Y)
         self.laurel_tree.set_bleeding(False)
         self.palace_wall.set_horror_level(0)

@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoonSpace 资源总览 - 月之隙美术审查</title>
+    <style id="theme-vars">
+:root {
+  /* === MoonSpace Color System === */
+  --color-primary: #c8d8e8;
+  --color-primary-dark: #8a9bb0;
+  --color-primary-light: #e8eef5;
+
+  --color-secondary: #2a3040;
+  --color-secondary-dark: #1a1e2a;
+  --color-secondary-light: #3a4050;
+
+  --color-accent: #8b2030;
+  --color-accent-dark: #5a1018;
+  --color-accent-light: #b83050;
+
+  --color-moon-white: #e0e8f0;
+  --color-cold-gray: #607080;
+  --color-deep-blue-black: #0c1018;
+  --color-horror-red: #a02020;
+  --color-wood-brown: #4a3828;
+  --color-tree-green: #2a4830;
+
+  --color-bg-dark: #0c1018;
+  --color-bg-surface: #1a1e2a;
+  --color-bg-card: #222838;
+  --color-bg-elevated: #2a3040;
+
+  --color-text-primary: #c8d8e8;
+  --color-text-secondary: #8a9bb0;
+  --color-text-muted: #607080;
+  --color-text-accent: #e8c0a0;
+
+  --color-border: #2a3040;
+  --color-border-subtle: #1e2230;
+
+  /* === Semantic Aliases (required by fill-html-head.mjs) === */
+  --color-background: #0c1018;
+  --color-foreground: #c8d8e8;
+  --color-card: #222838;
+  --color-muted: #607080;
+  --color-border-border: #2a3040;
+  --color-radius-sm: 2px;
+  --color-radius-md: 4px;
+  --color-radius-lg: 8px;
+
+  /* === Typography === */
+  --font-display: "Noto Serif SC", "SimSun", serif;
+  --font-body: "Inter", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* === Spacing === */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* === Radius === */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* === Shadow === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--color-background);
+    --color-foreground: var(--color-foreground);
+    --color-card: var(--color-card);
+    --color-primary: var(--color-primary);
+    --color-secondary: var(--color-secondary);
+    --color-muted: var(--color-muted);
+    --color-accent: var(--color-accent);
+    --color-border: var(--color-border);
+    --radius-sm: var(--color-radius-sm);
+    --radius-md: var(--color-radius-md);
+    --radius-lg: var(--color-radius-lg);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--color-background); }
+      .text-background { color: var(--color-background); }
+      .border-background { border-color: var(--color-background); }
+      .ring-background { --tw-ring-color: var(--color-background); }
+      .bg-foreground { background-color: var(--color-foreground); }
+      .text-foreground { color: var(--color-foreground); }
+      .border-foreground { border-color: var(--color-foreground); }
+      .ring-foreground { --tw-ring-color: var(--color-foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-secondary { background-color: var(--color-secondary); }
+      .text-secondary { color: var(--color-secondary); }
+      .border-secondary { border-color: var(--color-secondary); }
+      .ring-secondary { --tw-ring-color: var(--color-secondary); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-accent { background-color: var(--color-accent); }
+      .text-accent { color: var(--color-accent); }
+      .border-accent { border-color: var(--color-accent); }
+      .ring-accent { --tw-ring-color: var(--color-accent); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- 页面容器：最大宽度 1440px 居中 -->
+  <div class="max-w-[1440px] mx-auto w-full">
+
+    <!-- ========== 顶部导航栏 ========== -->
+    <nav class="sticky top-0 z-50 border-b border-[#2a3040]" style="background: rgba(12, 16, 24, 0.95); backdrop-filter: blur(8px);">
+      <div class="flex items-center justify-between px-6 py-4">
+        <!-- 左侧 Logo / 项目名 -->
+        <div class="flex items-center gap-3">
+          <span class="text-lg font-bold tracking-wide" style="color: #c8d8e8; font-family: 'Noto Serif SC', serif;">
+            MoonSpace
+          </span>
+          <span class="text-xs px-2 py-0.5 rounded" style="background: #8b2030; color: #e8c0a0; font-family: monospace;">
+            v1.0
+          </span>
+        </div>
+        <!-- 右侧标签页导航 -->
+        <div class="flex items-center gap-6 text-sm" style="color: #607080;">
+          <a href="asset-overview.html" class="nav-tab active" style="color: #c8d8e8;">
+            资源总览
+          </a>
+          <a href="characters.html" class="nav-tab" data-dom-id="nav-characters">
+            角色资源
+          </a>
+          <a href="environments.html" class="nav-tab" data-dom-id="nav-environments">
+            场景资源
+          </a>
+          <a href="cg-endings.html" class="nav-tab" data-dom-id="nav-cg">
+            CG 与结局
+          </a>
+          <a href="cg-scene-comparison.html" class="nav-tab">
+            CG 对比
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ========== Hero 区域 ========== -->
+    <section class="relative w-full overflow-hidden" style="height: 320px;">
+      <!-- 主菜单背景大图 -->
+      <img
+        src="../assets/main-menu-bg.png"
+        alt="月之隙主菜单背景"
+        class="pixelated absolute inset-0 w-full h-full object-cover"
+        style="filter: brightness(0.7);"
+      />
+      <!-- 左侧渐变覆盖层 + 文字 -->
+      <div class="hero-overlay absolute inset-0 flex items-center px-10">
+        <div class="max-w-lg">
+          <h1 class="text-4xl font-bold mb-3 tracking-wider" style="color: #c8d8e8; font-family: 'Noto Serif SC', serif;">
+            月之隙 <span class="text-lg font-normal" style="color: #607080;">/ MoonSpace</span>
+          </h1>
+          <p class="text-sm leading-relaxed" style="color: #8a9bb0;">
+            像素恐怖解谜游戏 — 广寒宫中的月使，在规则与恐惧之间寻找逃离的可能。
+            <br />
+            本页面为美术资源审查画布，展示项目当前 45 张正式/兼容 PNG 的概览、分类与状态；旧告示牌/独立捣药台已按用户反馈移除，Batch A 基准板与运行时截图均以当前代码为准。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 资源分类统计区 ========== -->
+    <section class="px-6 py-8">
+      <h2 class="text-xl font-bold mb-6 tracking-wide" style="color: #c8d8e8; font-family: 'Noto Serif SC', serif;">
+        资源分类统计
+      </h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- 角色精灵 -->
+        <div class="stat-card rounded-lg p-5 border" style="background: #1a1e2a; border-color: #2a3040;">
+          <div class="text-xs uppercase tracking-widest mb-2" style="color: #607080;">角色精灵</div>
+          <div class="text-3xl font-bold mb-1" style="color: #c8d8e8;">7</div>
+          <div class="text-xs leading-relaxed" style="color: #8a9bb0;">
+            3 大尺寸 + 3 对话头像 + 1 嫦娥帧动画
+          </div>
+        </div>
+
+        <!-- 场景背景 -->
+        <div class="stat-card rounded-lg p-5 border" style="background: #1a1e2a; border-color: #2a3040;">
+          <div class="text-xs uppercase tracking-widest mb-2" style="color: #607080;">场景背景</div>
+          <div class="text-3xl font-bold mb-1" style="color: #c8d8e8;">6</div>
+          <div class="text-xs leading-relaxed" style="color: #8a9bb0;">
+            院落、月桂树、月池、广寒殿、教程背景、宫墙
+          </div>
+        </div>
+
+        <!-- CG 过场 -->
+        <div class="stat-card rounded-lg p-5 border" style="background: #1a1e2a; border-color: #2a3040;">
+          <div class="text-xs uppercase tracking-widest mb-2" style="color: #607080;">CG 过场</div>
+          <div class="text-3xl font-bold mb-1" style="color: #c8d8e8;">10</div>
+          <div class="text-xs leading-relaxed" style="color: #8a9bb0;">
+            开场 4 张 + 坏结局 4 张 + 汇报 1 张 + 场景转场 1 张
+          </div>
+        </div>
+
+        <!-- UI 元素 -->
+        <div class="stat-card rounded-lg p-5 border" style="background: #1a1e2a; border-color: #2a3040;">
+          <div class="text-xs uppercase tracking-widest mb-2" style="color: #607080;">UI 元素</div>
+          <div class="text-3xl font-bold mb-1" style="color: #c8d8e8;">2</div>
+          <div class="text-xs leading-relaxed" style="color: #8a9bb0;">
+            主菜单背景、场景转场遮罩；旧告示牌与独立捣药台已移除
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== Batch A 视觉基准闸门 ========== -->
+    <section class="px-6 py-8" id="batch-a-baseline">
+      <h2 class="text-xl font-bold mb-3 tracking-wide" style="color: #c8d8e8; font-family: 'Noto Serif SC', serif;">
+        第三阶段 Batch A / 视觉基准闸门
+      </h2>
+      <p class="text-sm leading-relaxed mb-5" style="color: #8a9bb0;">
+        以下联系表来自当前运行时资源与 480×270 → 960×540 整数 2×证据。它们是等待用户批准的基准板，不是最终批量美术；旧绿幕、旧 Gate/Pool 候选已在页面与报告中标记为 <span style="color: #e8a0a0;">STALE</span>。
+      </p>
+      <a href="../assets/candidates/contact-sheets/baseline-boards-contact-sheet.png" target="_blank" rel="noreferrer">
+        <img src="../assets/candidates/contact-sheets/baseline-boards-contact-sheet.png" alt="Batch A 十张视觉基准板联系表" class="w-full rounded-lg border" style="border-color: #2a3040; background: #0c1018;">
+      </a>
+      <p class="text-xs mt-3" style="color: #607080;">
+        单张基准板：
+        <a href="../assets/candidates/contact-sheets/baseline-board-01-protagonist.png">01 主角</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-02-chang-e.png">02 嫦娥</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-03-wugang.png">03 吴刚</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-04-yutu-mortar.png">04 玉兔/药臼</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-05-palace-architecture.png">05 建筑</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-06-moon-pool.png">06 月池</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-07-gate-laurel-props.png">07 宫门/道具</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-08-moon-wilds.png">08 月面荒野</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-09-cg-language.png">09 CG</a> ·
+        <a href="../assets/candidates/contact-sheets/baseline-board-10-ui-safe-area.png">10 UI</a>
+      </p>
+    </section>
+
+    <!-- ========== 中文接入预览 ========== -->
+    <section class="px-6 py-8" id="integration-preview-cn">
+      <h2 class="text-xl font-bold mb-3 tracking-wide" style="color: #c8d8e8; font-family: 'Noto Serif SC', serif;">
+        正式接入资源 / 中文预览
+      </h2>
+      <p class="text-sm leading-relaxed mb-5" style="color: #8a9bb0;">
+        这两张图把“将接入什么、保留什么、必须重做什么”直接标在资源旁边，供视觉确认。它们是审批预览，不是正式资源；红色状态代表禁止直连，绿色污染层和空镜框代表示意或明确缺口。
+      </p>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <a href="../assets/candidates/contact-sheets/integration-preview-cn-runtime.png" target="_blank" rel="noreferrer">
+          <img src="../assets/candidates/contact-sheets/integration-preview-cn-runtime.png" alt="Batch B 正式接入资源中文预览" class="w-full rounded-lg border" style="border-color: #2a3040; background: #0c1018;" />
+        </a>
+        <a href="../assets/candidates/contact-sheets/integration-preview-cn-cg.png" target="_blank" rel="noreferrer">
+          <img src="../assets/candidates/contact-sheets/integration-preview-cn-cg.png" alt="Batch C 33 镜 CG 中文接入预览" class="w-full rounded-lg border" style="border-color: #2a3040; background: #0c1018;" />
+        </a>
+      </div>
+      <p class="text-xs mt-3" style="color: #607080;">
+        Batch B 预览：角色、建筑、月池、道具、UI；Batch C 预览：开场 8 镜、汇报 7 镜、HE 3 镜、四个坏结局各 3 镜、普通死亡 3 镜。当前运行状态以真实场景截图为准：B01 主角、B02 嫦娥比例、B06 月池污染层已接入；CG 按用户要求冻结。
+      </p>
+      <div class="mt-4 text-xs leading-relaxed" style="color: #8a9bb0;">
+        <span style="color: #9fe3b1;">已接入运行证据：</span>
+        <a href="../assets/candidates/contact-sheets/runtime-batch-b-chang-e-scale-960.png" target="_blank" rel="noreferrer" style="color: #c8d8e8;">嫦娥比例 2×</a> ·
+        <a href="../assets/candidates/contact-sheets/runtime-batch-b-moon-pool-normal-960.png" target="_blank" rel="noreferrer" style="color: #c8d8e8;">月池正常 2×</a> ·
+        <a href="../assets/candidates/contact-sheets/runtime-batch-b-moon-pool-polluted-960.png" target="_blank" rel="noreferrer" style="color: #c8d8e8;">月池污染 2×</a> ·
+        <a href="../assets/candidates/contact-sheets/runtime-batch-b-registration-desk-960.png" target="_blank" rel="noreferrer" style="color: #c8d8e8;">登记台 2×</a> ·
+        <a href="../assets/candidates/contact-sheets/runtime-batch-b-gate-closed-960.png" target="_blank" rel="noreferrer" style="color: #c8d8e8;">宫门闭 2×</a> ·
+        <a href="../assets/candidates/contact-sheets/runtime-batch-b-gate-open-960.png" target="_blank" rel="noreferrer" style="color: #c8d8e8;">宫门开 2×</a>
+      </div>
+    </section>
+
+    <!-- ========== 分隔线 ========== -->
+    <div class="mx-6 border-t" style="border-color: #1e2230;"></div>
+
+    <!-- ========== 资源状态网格 ========== -->
+    <section class="px-6 py-8">
+      <h2 class="text-xl font-bold mb-2 tracking-wide" style="color: #c8d8e8; font-family: 'Noto Serif SC', serif;">
+        全部资源网格
+      </h2>
+      <p class="text-xs mb-6" style="color: #607080;">
+        共 41 张正式/兼容 PNG — 3 列网格排列，悬浮查看高亮；旧候选另有 STALE 标识
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        <!-- Row 1 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/player-envoy-large.png" alt="player-envoy-large CG 对齐正式运行资源" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #9ed6b0;">player-envoy-large.png · 已批准并接入</div>
+            <div class="text-xs mt-1" style="color: #607080;">角色精灵 / 168×248 RGBA；CG 对齐身份，42×62/帧，保留原站位与碰撞</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/wugang-chop-large.png" alt="wugang-chop-large" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">wugang-chop-large.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">角色精灵 / 大尺寸</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/yutu-pounding-large.png" alt="yutu-pounding-large" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">yutu-pounding-large.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">角色精灵 / 大尺寸</div>
+          </div>
+        </div>
+
+        <!-- Row 2 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/chang-e-dialog.png" alt="chang-e-dialog" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">chang-e-dialog.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">角色精灵 / 对话头像</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/wugang-dialog.png" alt="wugang-dialog" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">wugang-dialog.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">角色精灵 / 对话头像</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/yutu-dialog.png" alt="yutu-dialog" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">yutu-dialog.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">角色精灵 / 对话头像</div>
+          </div>
+        </div>
+
+        <!-- Row 3 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../../assets/sprites/moonspace/sheets/chang_e_16frames_transparent.png" alt="嫦娥透明 16 帧运行时资源" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">chang_e_16frames_transparent.png</div>
+            <div class="text-xs mt-1" style="color: #e8a0a0;">旧 chang_e_16frames.png（RGB 绿幕）STALE</div>
+            <div class="text-xs mt-1" style="color: #607080;">角色精灵 / 帧动画</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../../assets/sprites/moonspace/backgrounds/courtyard_expanded_closed.png" alt="expanded 庭院关门运行时资源" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">courtyard_expanded_closed.png</div>
+            <div class="text-xs mt-1" style="color: #e8a0a0;">旧 courtyard-bg-large / Gate 候选 STALE</div>
+            <div class="text-xs mt-1" style="color: #607080;">场景背景 / 院落</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/laurel-tree.png" alt="laurel-tree" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">laurel-tree.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">场景背景 / 月桂树</div>
+          </div>
+        </div>
+
+        <!-- Row 4 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../../assets/sprites/moonspace/moon_pool_large.png" alt="moon_pool_large 运行时资源" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">moon_pool_large.png</div>
+            <div class="text-xs mt-1" style="color: #e8a0a0;">旧 moon_pool.png / Pool 候选 STALE；运行中心 (480,300)</div>
+            <div class="text-xs mt-1" style="color: #607080;">场景背景 / 月池</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/guanghan-hall.png" alt="guanghan-hall" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">guanghan-hall.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">场景背景 / 广寒殿</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/home-tutorial-bg.png" alt="home-tutorial-bg" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">home-tutorial-bg.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">场景背景 / 教程</div>
+          </div>
+        </div>
+
+        <!-- Row 5 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../../assets/sprites/moonspace/backgrounds/courtyard_expanded_closed.png" alt="expanded 宫门关门运行时资源" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">courtyard_expanded_closed.png</div>
+            <div class="text-xs mt-1" style="color: #e8a0a0;">旧 palace-wall-bg.png / Gate fallback STALE</div>
+            <div class="text-xs mt-1" style="color: #607080;">场景背景 / 宫墙</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/opening-cg-moonlight.png" alt="opening-cg-moonlight" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">opening-cg-moonlight.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 开场月光</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/opening-cg-blood-moon.png" alt="opening-cg-blood-moon" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">opening-cg-blood-moon.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 开场血月</div>
+          </div>
+        </div>
+
+        <!-- Row 6 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/opening-cg-room.png" alt="opening-cg-room" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">opening-cg-room.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 开场房间</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/opening-cg-blackout.png" alt="opening-cg-blackout" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">opening-cg-blackout.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 开场黑幕</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/cg-he-earth-return.png" alt="cg-he-earth-return" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">cg-he-earth-return.png</div>
+            <div class="text-xs mt-1" style="color: #e8a0a0;">CG 过场 / HE 月面返程·遥望地球（非抵达最终画面）</div>
+          </div>
+        </div>
+
+        <!-- Row 7 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/cg-be-wugang.png" alt="cg-be-wugang" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">cg-be-wugang.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 坏结局·吴刚</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/cg-be-yutu.png" alt="cg-be-yutu" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">cg-be-yutu.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 坏结局·玉兔</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/cg-be-double.png" alt="cg-be-double" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">cg-be-double.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 坏结局·双重</div>
+          </div>
+        </div>
+
+        <!-- Row 8 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/cg-be-wait.png" alt="cg-be-wait" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">cg-be-wait.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 坏结局·永续等待</div>
+          </div>
+        </div>
+
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/cg-report-staging.png" alt="cg-report-staging" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">cg-report-staging.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">CG 过场 / 汇报舞台</div>
+          </div>
+        </div>
+
+        <!-- Row 9 -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/main-menu-bg.png" alt="main-menu-bg" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">main-menu-bg.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">UI 元素 / 主菜单背景</div>
+          </div>
+        </div>
+
+        <!-- Row 10 - final card -->
+        <div class="asset-card rounded-lg overflow-hidden border" style="background: #1a1e2a; border-color: #2a3040;">
+          <img src="../assets/scene-transition.png" alt="scene-transition" class="pixelated w-full h-40 object-contain" style="background: #0c1018;" />
+          <div class="p-3">
+            <div class="text-sm font-medium" style="color: #c8d8e8;">scene-transition.png</div>
+            <div class="text-xs mt-1" style="color: #607080;">UI 元素 / 场景转场遮罩</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========== 分隔线 ========== -->
+    <div class="mx-6 border-t" style="border-color: #1e2230;"></div>
+
+    <!-- ========== 2026-08-10 收口复核 ========== -->
+    <section id="stage2-closure" class="px-6 py-8">
+      <div class="rounded-lg border p-5" style="background: rgba(139, 32, 48, 0.08); border-color: rgba(139, 32, 48, 0.35);">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div class="text-xs uppercase tracking-widest" style="color: #a96b78;">2026-08-10 / Stage 2 closure</div>
+            <h2 class="text-xl font-semibold mt-1" style="color: #e2edf7;">当前运行时验收已覆盖关键缺口</h2>
+          </div>
+          <div class="text-sm px-3 py-1 rounded-full" style="background: rgba(72, 150, 105, 0.18); color: #9be0b4;">334 tests passed</div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-4 mt-5 text-sm" style="color: #aebdcd;">
+          <div>
+            <div class="font-medium" style="color: #d8e5f2;">复命与死亡</div>
+            <p class="mt-1">复命 7 镜 × 1.2 秒 = 8.4 秒；死亡 D1/D2/D3 各 1.2 秒，2.4 秒后黑幕独立推进至约 4.0 秒；E 跳过，R 重置。</p>
+          </div>
+          <div>
+            <div class="font-medium" style="color: #d8e5f2;">玉兔分层</div>
+            <p class="mt-1">透明本体、手/杵覆盖层与静态药臼分离，保留 16×16 碰撞锚点；<a class="underline" style="color: #dca0aa;" href="../../assets/sprites/moonspace/yutu_body_4x4.png">body atlas</a>、<a class="underline" style="color: #dca0aa;" href="../../assets/sprites/moonspace/yutu_pestle_overlay_4x4.png">pestle overlay</a>、<a class="underline" style="color: #dca0aa;" href="../../assets/sprites/moonspace/props/yutu_mortar.png">mortar</a>。</p>
+          </div>
+          <div>
+            <div class="font-medium" style="color: #d8e5f2;">证据与边界</div>
+            <p class="mt-1">52 张本轮真实运行截图覆盖 480×270 / 960×540；正式 33 镜可读，PNG 解码错误为 0。旧绿幕与旧 CG fallback 仍标记 STALE/兼容，未未经确认删除。</p>
+          </div>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs" style="color: #dca0aa;">
+          <a class="underline" href="../assets/candidates/contact-sheets/runtime-cg-report-05-480.png">复命 R5 480</a>
+          <a class="underline" href="../assets/candidates/contact-sheets/runtime-cg-report-05-960.png">复命 R5 960</a>
+          <a class="underline" href="../assets/candidates/contact-sheets/runtime-cg-death-violation-03-480.png">死亡 D3 480</a>
+          <a class="underline" href="../assets/candidates/contact-sheets/runtime-cg-death-violation-03-960.png">死亡 D3 960</a>
+          <a class="underline" href="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-mid-action-480.png">玉兔运行时 480</a>
+          <a class="underline" href="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-mid-action-960.png">玉兔运行时 960</a>
+          <a class="underline" href="../assets/candidates/contact-sheets/runtime-closure-review-preview.png">集中审查板 20-panel</a>
+          <a class="underline" href="runtime-closure-preview.html">打开网页审查预览</a>
+        </div>
+        <p class="mt-5 text-xs" style="color: #7f91a5;">当前结论：实现与验收已达到打包前代码门槛；工作区仍保留未提交改动、历史资源和待用户确认的删除项，因此不等同于已发布包。</p>
+      </div>
+    </section>
+
+    <!-- ========== 底部进度标注 ========== -->
+    <footer class="px-6 py-8">
+      <div class="flex items-center gap-3 p-4 rounded-lg border" style="background: rgba(139, 32, 48, 0.08); border-color: rgba(139, 32, 48, 0.25);">
+        <div class="w-2 h-2 rounded-full flex-shrink-0" style="background: #8b2030;"></div>
+        <p class="text-sm" style="color: #8a9bb0;">
+          <span class="font-medium" style="color: #c8d8e8;">项目进度提示</span>
+          &mdash; CG 资源保持冻结；复命/死亡时序、玉兔分层、音效生命周期和 480/960 运行时取证已完成收口
+        </p>
+      </div>
+      <div class="mt-6 text-center text-xs" style="color: #607080;">
+        MoonSpace Art Asset Review Canvas &middot; Pixel Horror Game Visual Audit
+      </div>
+    </footer>
+  <style>
+    /* 像素风格渲染 - 保持硬边缘 */
+    img {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    body {
+      background-color: #0c1018;
+      color: #c8d8e8;
+      font-family: "Inter", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* 滚动条暗色主题 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0c1018;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2a3040;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3a4050;
+    }
+
+    /* 导航标签高亮下划线 */
+    .nav-tab {
+      position: relative;
+      padding-bottom: 4px;
+      transition: color 0.2s ease;
+    }
+    .nav-tab::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: transparent;
+      transition: background 0.2s ease;
+    }
+    .nav-tab:hover {
+      color: #c8d8e8;
+    }
+    .nav-tab:hover::after {
+      background: #607080;
+    }
+    .nav-tab.active {
+      color: #c8d8e8;
+    }
+    .nav-tab.active::after {
+      background: #8b2030;
+    }
+
+    /* Hero 区域覆盖层 */
+    .hero-overlay {
+      background: linear-gradient(
+        to right,
+        rgba(12, 16, 24, 0.92) 0%,
+        rgba(12, 16, 24, 0.7) 50%,
+        rgba(12, 16, 24, 0.2) 100%
+      );
+    }
+
+    /* 资源卡片悬浮效果 */
+    .asset-card {
+      border: 2px solid transparent;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .asset-card:hover {
+      border-color: #8b2030;
+      box-shadow: 0 0 12px rgba(139, 32, 48, 0.3);
+    }
+
+    /* 统计卡片微光效果 */
+    .stat-card {
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(139, 32, 48, 0.06),
+        transparent
+      );
+      transition: left 0.6s ease;
+    }
+    .stat-card:hover::before {
+      left: 150%;
+    }
+  </style>
+  </body>
+</html>

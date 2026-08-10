@@ -23,6 +23,7 @@ class DialogBox:
         "tutorial_shadow": "月影",
         "change": "嫦娥",
         "palace_gate": "广寒宫门",
+        "courtyard_gate": "庭院南门",
         "moon_pool": "月池",
         "player": "凌霄来使",
     }

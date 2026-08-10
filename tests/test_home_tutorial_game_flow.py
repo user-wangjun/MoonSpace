@@ -1,5 +1,7 @@
 """Home/tutorial 顶层流程测试。"""
 
+from collections import deque
+
 import pygame
 
 import config
@@ -50,6 +52,34 @@ def choose_current_dialog_option(game, index=0):
     game.dialog_box.current_index = len(game.dialog_box.lines) - 1
     game.dialog_box.selected_choice_index = index
     game.dialog_box.advance()
+
+
+def _guanghan_target_is_reachable(game, target: tuple[int, int]) -> bool:
+    """在 8px 网格上验证从南门出生点能绕开台阶和登记台到达目标。"""
+    collisions = game._guanghan_collision_rects()
+    start = config.GUANGHAN_SOUTH_SPAWN
+    queue = deque([start])
+    visited = {start}
+
+    def walkable(point: tuple[int, int]) -> bool:
+        rect = pygame.Rect(0, 0, *config.PLAYER_SIZE)
+        rect.midbottom = point
+        return pygame.Rect(40, 112, config.GUANGHAN_WIDTH - 80, 408).contains(rect) and not any(
+            rect.colliderect(obstacle) for obstacle in collisions
+        )
+
+    if not walkable(start):
+        return False
+    while queue:
+        x, y = queue.popleft()
+        if abs(x - target[0]) <= 8 and abs(y - target[1]) <= 8:
+            return True
+        for next_point in ((x - 8, y), (x + 8, y), (x, y - 8), (x, y + 8)):
+            if next_point in visited or not walkable(next_point):
+                continue
+            visited.add(next_point)
+            queue.append(next_point)
+    return False
 
 
 def test_finish_opening_enters_home_when_tutorial_not_done():
@@ -555,8 +585,44 @@ def test_guanghan_register_opens_from_front_of_desk():
     game._update_guanghan(0.016)
 
     assert game.envoy_register.active is True
-    assert game.guanghan_register_rect.top >= game.guanghan_register_desk_rect.bottom
+    assert game.envoy_register.mode == game.envoy_register.MODE_VERIFY
+    assert game.guanghan_register_rect.bottom > game.guanghan_register_collision_rect.bottom
+    assert not game.guanghan_register_rect.colliderect(game.guanghan_records_rect)
+    assert game.guanghan_register_rect.colliderect(game.guanghan_register_side_rect)
+    assert game.guanghan_records_rect.colliderect(game.guanghan_records_side_rect)
     assert any(rect.bottom == game.guanghan_register_desk_rect.bottom for rect in game._guanghan_collision_rects())
+
+
+def test_guanghan_records_open_from_separate_front_position():
+    game = Game()
+    game.mode = game.MODE_GUANGHAN
+    game.player.rect.center = game.guanghan_records_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+
+    game._update_guanghan(0.016)
+
+    assert game.envoy_register.active is True
+    assert game.envoy_register.mode == game.envoy_register.MODE_READ
+
+
+def test_guanghan_register_and_records_are_reachable_from_opposite_desk_sides():
+    game = Game()
+    game.mode = game.MODE_GUANGHAN
+
+    game.player.rect.center = game.guanghan_records_side_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+    game._update_guanghan(0.016)
+    assert game.envoy_register.mode == game.envoy_register.MODE_READ
+
+    game.envoy_register.close()
+    game.input_manager._pressed_once.clear()
+    game.player.rect.center = game.guanghan_register_side_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+    game._update_guanghan(0.016)
+    assert game.envoy_register.mode == game.envoy_register.MODE_VERIFY
 
 def test_guanghan_normal_report_starts_countdown_without_pollution():
     game = Game()
@@ -598,7 +664,7 @@ def test_guanghan_normal_report_starts_countdown_without_pollution():
     assert any("候月" in line for line in game.dialog_box.lines)
 
 
-def test_guanghan_report_requires_registration_before_curtain_opens():
+def test_guanghan_report_does_not_require_personal_name_or_registration():
     game = Game()
     game.mode = game.MODE_GUANGHAN
     game.mainline["wugang_checked"] = True
@@ -610,11 +676,10 @@ def test_guanghan_report_requires_registration_before_curtain_opens():
     game._update_guanghan(0.016)
 
     assert game.envoy_register.registered is False
-    assert game.report_started is False
-    assert game.mainline["report_completed"] is False
-    assert game.report_staging_active is False
-    assert game.dialog_box.active is True
-    assert any("先去登记台" in line for line in game.dialog_box.lines)
+    assert game.report_started is True
+    assert game.mainline["report_completed"] is True
+    assert game.report_staging_active is True
+    assert game.dialog_box.active is False
 
 
 def test_guanghan_countdown_decreases_while_active():
@@ -692,7 +757,7 @@ def test_home_draws_return_countdown_hud(monkeypatch):
 
     game._draw_home()
 
-    assert "候月 00:30" in rendered
+    assert "候月 00:30" not in rendered
 
 
 def test_guanghan_countdown_zero_triggers_change_ending():
@@ -734,7 +799,9 @@ def test_guanghan_interact_after_normal_report_returns_via_courtyard_to_moon_val
     game._update_guanghan(0.016)
 
     assert game.mode == game.MODE_PLAYING
-    assert game.mainline["return_countdown_active"] is True
+    assert game.mainline["return_countdown_active"] is False
+    assert game.mainline["return_departed_on_time"] is True
+    assert game.mainline["return_countdown_remaining"] == 0.0
     assert game.mainline["ending"] == ""
     assert game.player.rect.midbottom == config.COURTYARD_NORTH_SPAWN
 
@@ -745,7 +812,8 @@ def test_guanghan_interact_after_normal_report_returns_via_courtyard_to_moon_val
 
     assert game.mode == game.MODE_HOME
     assert game.player.rect.top >= game.home_tutorial.gate_trigger_rect.bottom
-    assert game.save_manager.saved_payloads[-1]["mainline"]["return_countdown_active"] is True
+    assert game.save_manager.saved_payloads[-1]["mainline"]["return_countdown_active"] is False
+    assert game.save_manager.saved_payloads[-1]["mainline"]["return_departed_on_time"] is True
 
 
 def test_home_altar_before_countdown_zero_triggers_he():
@@ -756,8 +824,9 @@ def test_home_altar_before_countdown_zero_triggers_he():
     game._apply_save_data(game.current_save_data)
     game.mode = game.MODE_HOME
     game.mainline["report_completed"] = True
-    game.mainline["return_countdown_active"] = True
-    game.mainline["return_countdown_remaining"] = 30.0
+    game.mainline["return_departed_on_time"] = True
+    game.mainline["return_countdown_active"] = False
+    game.mainline["return_countdown_remaining"] = 0.0
     game.player.rect.center = game.home_tutorial.altar_rect.center
     game.player.position.xy = game.player.rect.topleft
 
@@ -787,14 +856,105 @@ def test_home_countdown_zero_triggers_change_ending():
 
     game._update_home(0.75)
 
+    assert game.mainline["return_countdown_active"] is True
+    assert game.mainline["return_countdown_remaining"] == 0.5
+    assert game.mainline["ending"] == ""
+    assert game.mode == game.MODE_HOME
+
+
+def test_clean_route_reports_without_name_leaves_once_and_returns_to_altar_he():
+    game = Game()
+    game.save_manager = MemorySaveManager()
+    game.current_slot_id = 1
+    game.current_save_data = game.save_manager.default_save(1)
+    game._apply_save_data(game.current_save_data)
+    game.mode = game.MODE_PLAYING
+    game.mainline["wugang_checked"] = True
+    game.mainline["yutu_checked"] = True
+
+    game.player.rect.center = game.palace_entry_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+    game._update_playing(0.016)
+    assert game.mode == game.MODE_GUANGHAN
+
+    game.player.rect.center = game.guanghan_report_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.clear()
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+    game._update_guanghan(0.016)
+
+    assert game.envoy_register.registered is False
+    assert game.mainline["report_completed"] is True
+    assert game.mainline["return_countdown_active"] is True
+    game._finish_report_staging()
+    game.dialog_box.close()
+
+    game.player.rect.center = game.guanghan_exit_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.clear()
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+    game._update_guanghan(0.016)
+
+    assert game.mode == game.MODE_PLAYING
+    assert game.mainline["return_departed_on_time"] is True
     assert game.mainline["return_countdown_active"] is False
     assert game.mainline["return_countdown_remaining"] == 0.0
-    assert game.mainline["ending"] == "be_change"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["ending"] == "be_change"
+
+    game.player.rect.topleft = (100, 300)
+    game.player.position.xy = game.player.rect.topleft
+    game._update_playing(1.0)
+    assert game.mainline["ending"] == ""
+    assert game.mainline["return_countdown_active"] is False
+
+    game.player.rect.center = game.courtyard_south_exit_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.clear()
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+    game._update_playing(0.016)
+    assert game.mode == game.MODE_HOME
+
+    game.player.rect.center = game.home_tutorial.altar_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game._update_home(0.016)
+
+    assert game.mainline["ending"] == "he_return_earth"
     assert game.mode == game.MODE_ENDING_CG
-    assert game.ending_cg.active is True
-    assert game.ending_cg.ending_id == "be_change"
-    assert game.dialog_box.active is False
+
+
+def test_timely_departure_blocks_returning_to_guanghan_wait():
+    game = Game()
+    game.mode = game.MODE_PLAYING
+    game.mainline["wugang_checked"] = True
+    game.mainline["yutu_checked"] = True
+    game.mainline["report_completed"] = True
+    game.mainline["return_departed_on_time"] = True
+    game.player.rect.center = game.palace_entry_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+
+    game._update_playing(0.016)
+
+    assert game.mode == game.MODE_PLAYING
+    assert game.dialog_box.active is True
+    assert any("不得重入" in line for line in game.dialog_box.lines)
+
+
+def test_polluted_report_blocks_courtyard_south_gate_until_pool_verdict():
+    game = Game()
+    game.mode = game.MODE_PLAYING
+    game.mainline["pending_pool_ending"] = "be_wugang"
+    game.player.rect.center = game.courtyard_south_exit_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+
+    game._update_playing(0.016)
+
+    assert game.mode == game.MODE_PLAYING
+    assert game.mainline["ending"] == ""
+    assert game.dialog_box.active is True
+    assert any("月池" in line and "不得返月谷" in line for line in game.dialog_box.lines)
+    assert any(rect.collidepoint(game.courtyard_south_exit_rect.centerx, 500) for rect in game._get_collision_rects())
 
 
 def test_guanghan_wugang_pollution_starts_pool_fake_report():
@@ -894,8 +1054,8 @@ def test_guanghan_double_pollution_sets_laurel_pool_ending():
 
     assert game.mainline["report_completed"] is False
     assert game.mainline["return_countdown_active"] is False
-    assert game.mainline["pending_pool_ending"] == "be_laurel_mixed"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["pending_pool_ending"] == "be_laurel_mixed"
+    assert game.mainline["pending_pool_ending"] == "be_double"
+    assert game.save_manager.saved_payloads[-1]["mainline"]["pending_pool_ending"] == "be_double"
     assert game.report_staging_active is True
     assert game.dialog_box.active is False
 
@@ -982,7 +1142,7 @@ def test_guanghan_pending_double_pool_ending_triggers_laurel_consumption_at_pool
     game.current_save_data = game.save_manager.default_save(1)
     game._apply_save_data(game.current_save_data)
     game.mode = game.MODE_GUANGHAN
-    game.mainline["pending_pool_ending"] = "be_laurel_mixed"
+    game.mainline["pending_pool_ending"] = "be_double"
     game.dialog_box.active = False
     game.player.rect.center = game.guanghan_exit_rect.center
     game.player.position.xy = game.player.rect.topleft
@@ -991,7 +1151,7 @@ def test_guanghan_pending_double_pool_ending_triggers_laurel_consumption_at_pool
     game._update_guanghan(0.016)
 
     assert game.mode == game.MODE_PLAYING
-    assert game.mainline["pending_pool_ending"] == "be_laurel_mixed"
+    assert game.mainline["pending_pool_ending"] == "be_double"
 
     game.player.rect.center = game.moon_pool.rect.center
     game.player.position.xy = game.player.rect.topleft
@@ -999,11 +1159,11 @@ def test_guanghan_pending_double_pool_ending_triggers_laurel_consumption_at_pool
     game._update_playing(0.016)
 
     assert game.mainline["pending_pool_ending"] == ""
-    assert game.mainline["ending"] == "be_laurel_mixed"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["ending"] == "be_laurel_mixed"
+    assert game.mainline["ending"] == "be_double"
+    assert game.save_manager.saved_payloads[-1]["mainline"]["ending"] == "be_double"
     assert game.mode == game.MODE_ENDING_CG
     assert game.ending_cg.active is True
-    assert game.ending_cg.ending_id == "be_laurel_mixed"
+    assert game.ending_cg.ending_id == "be_double"
     assert game.dialog_box.active is False
 
 
@@ -1085,11 +1245,14 @@ def test_guanghan_rule_book_blocks_leave_interaction_until_closed():
     assert game.rule_book.is_open is True
 
 
-def test_guanghan_mode_draws_confirmed_hall_background():
+def test_guanghan_mode_draws_fixed_walkable_hall_background_even_after_verification():
     game = Game()
     game.game_surface.fill(palette.BLACK)
+    game.envoy_register.registered = True
 
     assert game._draw_guanghan_background() is True
+    assert game.guanghan_walkable_background.endswith("guanghan_hall_curtain.png")
+    assert game.guanghan_cg_background.endswith("guanghan_hall.png")
 
     colors = {
         game.game_surface.get_at((x, y))[:3]
@@ -1098,6 +1261,17 @@ def test_guanghan_mode_draws_confirmed_hall_background():
     }
     assert len(colors) > 1
     assert any(color != palette.BLACK for color in colors)
+
+
+def test_guanghan_draws_existing_transparent_chang_e_world_sprite():
+    game = Game()
+    game.game_surface.fill(palette.BLACK)
+
+    game._draw_guanghan_chang_e((-240, 0))
+
+    assert game._chang_e_frames
+    assert game._chang_e_frames[0].get_at((0, 0)).a == 0
+    assert game.game_surface.get_bounding_rect().width > 0
 
 
 def test_home_rules_dialog_close_autosaves_briefing_progress():
@@ -1279,8 +1453,10 @@ def test_expanded_scene_interactions_and_collisions_stay_inside_world_bounds():
     assert pygame.Rect(0, 0, config.GUANGHAN_WIDTH, config.GUANGHAN_HEIGHT).contains(
         game.guanghan_register_desk_rect
     )
-    assert not game.guanghan_register_rect.colliderect(game.guanghan_register_desk_rect)
-    assert game.guanghan_register_rect.size == (52, 28)
+    assert game.guanghan_register_rect.size == (64, 26)
+    assert game.guanghan_records_rect.size == (64, 26)
+    assert game.guanghan_records_side_rect.right >= game.guanghan_register_collision_rect.left
+    assert game.guanghan_register_side_rect.left <= game.guanghan_register_collision_rect.right
     assert game.guanghan_register_collision_rect.colliderect(game.guanghan_register_desk_rect)
     assert game.guanghan_exit_rect.bottom <= config.GUANGHAN_HEIGHT
 
@@ -1290,13 +1466,28 @@ def test_expanded_scene_interactions_and_collisions_stay_inside_world_bounds():
     hall_spawn.midbottom = config.GUANGHAN_SOUTH_SPAWN
     assert not courtyard_spawn.colliderect(game.palace_entry_rect)
     assert not hall_spawn.colliderect(game.guanghan_exit_rect)
+    assert not any(hall_spawn.colliderect(rect) for rect in game._guanghan_collision_rects())
 
 
-def test_courtyard_south_wall_keeps_center_gate_open():
+def test_guanghan_south_spawn_reaches_records_register_report_and_exit():
+    game = Game()
+
+    targets = (
+        game.guanghan_records_rect.center,
+        game.guanghan_register_rect.center,
+        game.guanghan_report_rect.center,
+        game.guanghan_exit_rect.center,
+    )
+
+    assert all(_guanghan_target_is_reachable(game, target) for target in targets)
+
+
+def test_courtyard_south_wall_keeps_interaction_zone_open_and_gate_facade_blocked():
     game = Game()
     collisions = game._get_collision_rects()
 
     assert not any(rect.collidepoint(game.courtyard_south_exit_rect.center) for rect in collisions)
+    assert any(rect.collidepoint(game.courtyard_south_exit_rect.centerx, 500) for rect in collisions)
     assert any(rect.collidepoint(100, 560) for rect in collisions)
     assert any(rect.collidepoint(860, 560) for rect in collisions)
     assert any(rect.collidepoint(100, 620) for rect in collisions)
@@ -1315,16 +1506,17 @@ def test_guanghan_walls_block_sides_but_keep_south_doorway_open():
     assert not any(rect.collidepoint(game.guanghan_report_rect.center) for rect in collisions)
 
 
-def test_guanghan_register_does_not_open_from_desk_left():
+def test_guanghan_records_open_from_desk_left_side():
     game = Game()
     game.mode = game.MODE_GUANGHAN
-    for center in ((game.guanghan_register_desk_rect.left - 8, game.guanghan_register_desk_rect.centery),):
-        game.envoy_register.close()
-        game.player.rect.center = center
-        game.player.position.xy = game.player.rect.topleft
-        game.input_manager._pressed_once.add(config.ACTION_INTERACT)
-        game._update_guanghan(0.016)
-        assert game.envoy_register.active is False
+    game.player.rect.center = game.guanghan_records_side_rect.center
+    game.player.position.xy = game.player.rect.topleft
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+
+    game._update_guanghan(0.016)
+
+    assert game.envoy_register.active is True
+    assert game.envoy_register.mode == game.envoy_register.MODE_READ
 
 
 def test_pool_reflection_visibility_uses_same_facing_condition_as_rule():
@@ -1392,3 +1584,29 @@ def test_bleeding_laurel_is_safe_and_grants_exit_grace_when_bleeding_ends():
     game._update_rule_checks(0.016)
 
     assert game.game_state.violation_count == 1
+
+
+def test_report_staging_uses_fixed_shot_boundaries_and_eight_point_four_seconds():
+    game = Game()
+
+    assert game.report_staging_duration == 8.4
+    assert [Game.report_shot_index_at(timer) for timer in (0.0, 1.199, 1.2, 2.399, 2.4, 7.2, 8.4)] == [0, 0, 1, 1, 2, 6, 6]
+
+    game._start_report_staging("change", ["line"], "caption")
+    game._update_report_staging(8.399)
+    assert game.report_staging_active is True
+
+    game._update_report_staging(0.001)
+    assert game.report_staging_active is False
+    assert game.dialog_box.active is True
+
+
+def test_report_staging_can_be_skipped_with_e():
+    game = Game()
+    game._start_report_staging("change", ["line"], "caption")
+    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
+
+    game._update_report_staging(0.0)
+
+    assert game.report_staging_active is False
+    assert game.dialog_box.active is True

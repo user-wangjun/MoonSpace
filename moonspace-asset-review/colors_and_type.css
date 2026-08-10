@@ -1,0 +1,81 @@
+:root {
+  /* === MoonSpace Color System === */
+  --color-primary: #c8d8e8;
+  --color-primary-dark: #8a9bb0;
+  --color-primary-light: #e8eef5;
+
+  --color-secondary: #2a3040;
+  --color-secondary-dark: #1a1e2a;
+  --color-secondary-light: #3a4050;
+
+  --color-accent: #8b2030;
+  --color-accent-dark: #5a1018;
+  --color-accent-light: #b83050;
+
+  --color-moon-white: #e0e8f0;
+  --color-cold-gray: #607080;
+  --color-deep-blue-black: #0c1018;
+  --color-horror-red: #a02020;
+  --color-wood-brown: #4a3828;
+  --color-tree-green: #2a4830;
+
+  --color-bg-dark: #0c1018;
+  --color-bg-surface: #1a1e2a;
+  --color-bg-card: #222838;
+  --color-bg-elevated: #2a3040;
+
+  --color-text-primary: #c8d8e8;
+  --color-text-secondary: #8a9bb0;
+  --color-text-muted: #607080;
+  --color-text-accent: #e8c0a0;
+
+  --color-border: #2a3040;
+  --color-border-subtle: #1e2230;
+
+  /* === Semantic Aliases (required by fill-html-head.mjs) === */
+  --color-background: #0c1018;
+  --color-foreground: #c8d8e8;
+  --color-card: #222838;
+  --color-muted: #607080;
+  --color-border-border: #2a3040;
+  --color-radius-sm: 2px;
+  --color-radius-md: 4px;
+  --color-radius-lg: 8px;
+
+  /* === Typography === */
+  --font-display: "Noto Serif SC", "SimSun", serif;
+  --font-body: "Inter", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* === Spacing === */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* === Radius === */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* === Shadow === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}

@@ -184,26 +184,11 @@ class SceneTransition:
         veil = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
         veil.fill((*palette.DARK_BLOOD, 48))
         surface.blit(veil, (0, 0))
-        try:
-            face = load_image("sprites/moonspace/transition_found_you_face.png")
-        except (FileNotFoundError, pygame.error):
-            face = None
-
-        if face is not None:
-            face = pygame.transform.smoothscale(face, (62, 76))
-            face.set_alpha(178)
-            shadow = pygame.Surface(face.get_size(), pygame.SRCALPHA)
-            shadow.fill((*palette.BLACK, 88))
-            face.blit(shadow, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
-            clip = pygame.Surface((62, 54), pygame.SRCALPHA)
-            clip.blit(face, (0, 0), pygame.Rect(0, 0, 62, 54))
-            surface.blit(clip, (cx - clip.get_width() // 2, cy - 24))
-        else:
-            draw_filled_rect(surface, (cx - 14, cy - 18, 28, 24), palette.BLACK)
-            draw_filled_rect(surface, (cx - 9, cy - 10, 5, 2), palette.BLOOD_RED)
-            draw_filled_rect(surface, (cx + 4, cy - 10, 5, 2), palette.BLOOD_RED)
-            draw_line(surface, (cx - 10, cy - 2), (cx + 10, cy - 2), palette.DARK_BLOOD)
-            draw_filled_rect(surface, (cx - 18, cy + 5, 36, 52), palette.BLACK)
+        draw_filled_rect(surface, (cx - 14, cy - 18, 28, 24), palette.BLACK)
+        draw_filled_rect(surface, (cx - 9, cy - 10, 5, 2), palette.BLOOD_RED)
+        draw_filled_rect(surface, (cx + 4, cy - 10, 5, 2), palette.BLOOD_RED)
+        draw_line(surface, (cx - 10, cy - 2), (cx + 10, cy - 2), palette.DARK_BLOOD)
+        draw_filled_rect(surface, (cx - 18, cy + 5, 36, 52), palette.BLACK)
 
         draw_filled_rect(surface, (cx - 27, cy + 19, 54, 2), palette.BLOOD_RED)
         draw_filled_rect(surface, (cx - 2, cy + 20, 4, 14), palette.DARK_BLOOD)

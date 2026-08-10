@@ -39,7 +39,6 @@
     const W = 480;
     const H = 270;
     const ASSET = "../assets/sprites/moonspace/";
-    const PREVIEW = "../tmp/cg-preview-candidates/";
     const capOpening = [
       [0,3.2,"新下载的 MoonSpace，进度条停在了最后一格。"],
       [3.2,6,"窗外升起血月，房间里没有风。"],
@@ -49,40 +48,37 @@
       [14,15,"醒来时，月宫的规条已经刻在面前。"]
     ];
     const capEndings = {
-      he:[[0,2.2,"月谷祭坛亮起，月宫的声音在身后合拢。"],[2.2,4.8,"凌霄来使复命已毕，伪装也完成了它的职责。"],[4.8,8,"你回到了地球。MoonSpace 仍在屏幕上，但它不再认识你。"]],
+      he:[[0,2.2,"月谷祭坛亮起，月宫的声音在身后合拢。"],[2.2,4.8,"凌霄来使复命已毕，伪装也完成了它的职责。"],[4.8,8,"晨光落在地球的房间里，归路终于抵达。"]],
       wugang:[[0,2.6,"池水照见的，不再只是来使。"],[2.6,5.2,"斧声从倒影里响起，替你答完了月宫的问题。"],[5.2,8,"新的伐桂人，被月桂收下了。"]],
       yutu:[[0,2.6,"池水照见的，不再只是来使。"],[2.6,5.2,"杵声从腕骨里响起，药香替你留在了月宫。"],[5.2,8,"新的捣药人，被药臼收下了。"]],
-      double:[[0,2.6,"两份差错在池边合成了一份记录。"],[2.6,5.2,"玉桂树伸出根须，把多余的来使拖回树下。"],[5.2,8,"树皮上，缓缓多出一个流血的面孔。"]],
+      double:[[0,2.6,"两份差错在池边合成了一份记录。"],[2.6,5.2,"月桂树伸出根须，把多余的来使拖回树下。"],[5.2,8,"树皮上，缓缓多出一个流血的面孔。"]],
       change:[[0,2.6,"月光尽了，你还在宫中。"],[2.6,5.2,"嫦娥没有催促，只看着流程完成。"],[5.2,8,"广寒宫不缺月光，只缺一个留下来等的人。"]]
     };
+    const makeFrames = (files, labels, starts) => files.map((file, index) => ({label:labels[index], at:starts[index], file, path:ASSET+"cg/"+file}));
+    const openingFiles = [
+      "opening_01_download_start.png", "opening_02_download_finish.png", "opening_03_turn_to_window.png", "opening_04_blood_moon_emerges.png",
+      "opening_05_blood_moon_full.png", "opening_06_moonlight_corrupts_screen.png", "opening_07_screen_shatters.png", "opening_08_blackout_crescent.png"
+    ];
+    const openingStarts = [0, 1.8, 3.2, 4.8, 6.0, 7.8, 9.4, 12.6];
+    const openingLabels = ["下载开始", "下载完成", "回头看窗", "血月出云", "血月全貌", "月光侵入屏幕", "屏幕碎裂", "黑场月牙"];
+    const reportFiles = [
+      "report_01_enter_hall.png", "report_02_walk_forward.png", "report_03_stop_before_chang_e.png", "report_04_formal_bow.png",
+      "report_05_present_records.png", "report_06_chang_e_receives_records.png", "report_07_records_on_desk.png"
+    ];
+    const reportLabels = ["R1 入殿", "R2 前行", "R3 停在嫦娥前", "R4 行礼", "R5 呈递记录", "R6 嫦娥接册", "R7 记录落桌"];
+    const reportStarts = [0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4];
+    const deathFiles = ["death_violation_01_reflection.png", "death_violation_02_pool_spreads.png", "death_violation_03_pool_pull.png"];
+    const endingStarts = [0, 2.4, 5.2];
+    const ending = (id, title, files, captions, labels) => ({id, group:"story", groupName:"主线", title, duration:8, mode:"sequence", thumb:ASSET+"cg/"+files[0], captions, frames:makeFrames(files, labels, endingStarts)});
     const sequences = [
-      {id:"opening-full", group:"opening", groupName:"开场", title:"开场完整 CG / 新候选", duration:15, mode:"sequence", thumb:PREVIEW+"opening_01_download_clouded.png", captions:capOpening, frames:[
-        {label:"下载初始 / 云遮血月", at:0, file:"opening_01_download_clouded.png", path:PREVIEW+"opening_01_download_clouded.png"},
-        {label:"下载推进", at:1.2, file:"opening_02_download_progress.png", path:PREVIEW+"opening_02_download_progress.png"},
-        {label:"回头看窗 / 月仍被遮", at:2.4, file:"opening_03_turn_clouded_moon.png", path:PREVIEW+"opening_03_turn_clouded_moon.png"},
-        {label:"血月从城市后露出", at:3.6, file:"opening_04_moon_emerging_city.png", path:PREVIEW+"opening_04_moon_emerging_city.png"},
-        {label:"血月半露", at:4.8, file:"opening_05_half_revealed_city.png", path:PREVIEW+"opening_05_half_revealed_city.png"},
-        {label:"血月更清晰", at:6.0, file:"opening_06_blood_moon_clearer.png", path:PREVIEW+"opening_06_blood_moon_clearer.png"},
-        {label:"电脑白月开始污染", at:7.2, file:"opening_07_white_moon_screen_corrupting.png", path:PREVIEW+"opening_07_white_moon_screen_corrupting.png"},
-        {label:"白月转红月", at:8.4, file:"opening_08_white_to_red_screen.png", path:PREVIEW+"opening_08_white_to_red_screen.png"},
-        {label:"红月屏幕扭曲", at:9.6, file:"opening_09_red_moon_screen_glitch.png", path:PREVIEW+"opening_09_red_moon_screen_glitch.png"},
-        {label:"仍在房间 / 尝试逃离", at:11.0, file:"opening_10_try_escape_room.png", path:PREVIEW+"opening_10_try_escape_room.png"},
-        {label:"被拉回电脑", at:12.8, file:"opening_11_pulled_to_computer.png", path:PREVIEW+"opening_11_pulled_to_computer.png"},
-        {label:"被电脑吞入 / 房间黑场", at:14.0, file:"opening_12_swallowed_black_room.png", path:PREVIEW+"opening_12_swallowed_black_room.png"}
-      ]},
-      {id:"report-staging", group:"story", groupName:"主线", title:"复命短过场 / 实际角色合成候选", duration:5.4, mode:"sequence", thumb:PREVIEW+"report_01_enter_aisle.png", captions:[[0,2.0,"来使沿中堂入内，仍是月宫识得的那副伪装。"],[2.0,4.0,"月光把距离拉长，嫦娥在殿尽头等候。"],[4.0,5.4,"来使垂首呈上记录，嫦娥在月光里收下复命。"]], frames:[
-        {label:"入殿", at:0, file:"report_01_enter_aisle.png", path:PREVIEW+"report_01_enter_aisle.png"},
-        {label:"向前行走", at:0.9, file:"report_02_walk_forward.png", path:PREVIEW+"report_02_walk_forward.png"},
-        {label:"抵达中段", at:1.8, file:"report_03_mid_hall.png", path:PREVIEW+"report_03_mid_hall.png"},
-        {label:"嫦娥前行礼", at:2.7, file:"report_04_bow_before_change.png", path:PREVIEW+"report_04_bow_before_change.png"},
-        {label:"双手呈递记录", at:3.6, file:"report_05_present_records.png", path:PREVIEW+"report_05_present_records.png"},
-        {label:"记录被收下", at:4.5, file:"report_06_records_received.png", path:PREVIEW+"report_06_records_received.png"}
-      ]},
-      {id:"he-earth-return", group:"story", groupName:"主线", title:"HE / 返回地球", duration:8, mode:"still", thumb:ASSET+"cg/he_earth_return.png", captions:capEndings.he, frames:[{label:"HE 背景", at:0, file:"cg/he_earth_return.png", path:ASSET+"cg/he_earth_return.png"}]},
-      {id:"be-wugang", group:"story", groupName:"主线", title:"BE / 吴刚污染", duration:8, mode:"still", thumb:ASSET+"cg/be_wugang_pollution.png", captions:capEndings.wugang, frames:[{label:"吴刚污染", at:0, file:"cg/be_wugang_pollution.png", path:ASSET+"cg/be_wugang_pollution.png"}]},
-      {id:"be-yutu", group:"story", groupName:"主线", title:"BE / 玉兔污染", duration:8, mode:"still", thumb:ASSET+"cg/be_yutu_pollution.png", captions:capEndings.yutu, frames:[{label:"玉兔污染", at:0, file:"cg/be_yutu_pollution.png", path:ASSET+"cg/be_yutu_pollution.png"}]},
-      {id:"be-double", group:"story", groupName:"主线", title:"BE / 双重污染", duration:8, mode:"still", thumb:ASSET+"cg/be_double_pollution.png", captions:capEndings.double, frames:[{label:"双重污染", at:0, file:"cg/be_double_pollution.png", path:ASSET+"cg/be_double_pollution.png"}]},
-      {id:"be-change", group:"story", groupName:"主线", title:"BE / 留宫等待", duration:8, mode:"still", thumb:ASSET+"cg/be_wait_trap.png", captions:capEndings.change, frames:[{label:"留宫等待", at:0, file:"cg/be_wait_trap.png", path:ASSET+"cg/be_wait_trap.png"}]}
+      {id:"opening-full", group:"opening", groupName:"开场", title:"开场完整 CG / 正式 8 镜", duration:15, mode:"sequence", thumb:ASSET+"cg/"+openingFiles[0], captions:capOpening, frames:makeFrames(openingFiles, openingLabels, openingStarts)},
+      {id:"report-staging", group:"story", groupName:"主线", title:"复命短过场 / 正式 7 镜", duration:2.8, mode:"sequence", thumb:ASSET+"cg/"+reportFiles[0], captions:[[0,2.8,"来使递上两份职司记录。"],], frames:makeFrames(reportFiles, reportLabels, reportStarts)},
+      ending("he-earth-return", "HE / 返回地球 · 三镜", ["he_earth_return.png", "he_02_depart_moon_palace.png", "he_03_earth_arrival.png"], capEndings.he, ["H1 月面返程", "H2 离开月宫", "H3 抵达地球"]),
+      ending("be-wugang", "BE / 吴刚污染 · 三镜", ["be_wugang_01_pool_axe_reflection.png", "be_wugang_02_roots_claim_envoy.png", "be_wugang_03_new_lumberjack.png"], capEndings.wugang, ["W1 斧影", "W2 根须", "W3 新伐桂人"]),
+      ending("be-yutu", "BE / 玉兔污染 · 三镜", ["be_yutu_01_rabbit_shadow.png", "be_yutu_02_mortar_awakens.png", "be_yutu_03_new_medicine_maker.png"], capEndings.yutu, ["Y1 兔影", "Y2 药臼醒来", "Y3 新捣药人"]),
+      ending("be-double", "BE / 双重污染 · 三镜", ["be_double_01_records_overlap.png", "be_double_02_roots_converge.png", "be_double_03_bleeding_tree_face.png"], capEndings.double, ["D1 记录重叠", "D2 根须合流", "D3 树上面孔"]),
+      ending("be-change", "BE / 留宫等待 · 三镜", ["be_change_01_empty_hall.png", "be_change_02_chang_e_closes_path.png", "be_change_03_left_under_moonlight.png"], capEndings.change, ["C1 空殿", "C2 嫦娥封路", "C3 留在月下"]),
+      {id:"death-violation", group:"story", groupName:"主线", title:"普通三次违规死亡 / D1–D3", duration:1.5, mode:"sequence", thumb:ASSET+"cg/"+deathFiles[0], captions:[[0,1.5,"第三次违规，月池收回了来使。"]], frames:makeFrames(deathFiles, ["D1 倒影", "D2 池面外溢", "D3 池中拖拽"], [0, 0.5, 1.0])}
     ];
     const state = {filter:"all", query:"", currentId:new URLSearchParams(location.search).get("cg") || localStorage.getItem("moonspace-cg-player") || "opening-full", time:0, playing:false, last:0};
     const els = {count:document.querySelector("#count"), select:document.querySelector("#cgSelect"), list:document.querySelector("#cgList"), search:document.querySelector("#search"), canvas:document.querySelector("#canvas"), play:document.querySelector("#playBtn"), timeline:document.querySelector("#timeline"), time:document.querySelector("#timeText"), strip:document.querySelector("#frameStrip"), name:document.querySelector("#currentName"), path:document.querySelector("#currentPath"), zoom:document.querySelector("#zoomSelect"), bg:document.querySelector("#bgSelect"), player:document.querySelector("#playerBox"), wrap:document.querySelector("#stageWrap"), group:document.querySelector("#infoGroup"), duration:document.querySelector("#infoDuration"), frame:document.querySelector("#infoFrame"), index:document.querySelector("#infoIndex"), prev:document.querySelector("#prevBtn"), next:document.querySelector("#nextBtn"), filters:Array.from(document.querySelectorAll("[data-filter]"))};
@@ -97,7 +93,7 @@
     function drawCaption(s,t){const cap=captionAt(s,t); if(!cap)return; const fade=Math.min(1,Math.max(0,(t-cap[0])/.5),Math.max(0,(cap[1]-t)/.5)); if(fade<=0)return; ctx.fillStyle=`rgba(0,0,0,${.72*fade})`;ctx.fillRect(0,H-42,W,34);ctx.fillStyle=`rgba(244,234,210,${fade})`;ctx.font="13px 'Microsoft YaHei','Segoe UI',sans-serif";ctx.textBaseline="top";wrapText(cap[2],22,H-32,392,17)}
     function wrapText(text,x,y,maxWidth,lineHeight){let line=""; for(const ch of text){const test=line+ch;if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y);line=ch;y+=lineHeight}else line=test} if(line)ctx.fillText(line,x,y)}
     function drawSkip(text){ctx.fillStyle="rgba(169,176,188,.95)";ctx.font="11px 'Microsoft YaHei','Segoe UI',sans-serif";ctx.fillText(text,410,11)}
-    function renderCanvas(){const s=seq(),t=state.time;ctx.clearRect(0,0,W,H);const f=frameAt(s,t);drawImage(f.path);drawCaption(s,t);drawSkip(s.id==="report-staging"?"E 跳过":"E / Esc 跳过");updateReadout()}
+    function renderCanvas(){const s=seq(),t=state.time;ctx.clearRect(0,0,W,H);const f=frameAt(s,t);drawImage(f.path);drawCaption(s,t);drawSkip(s.id==="report-staging"?"E 跳过":s.id==="death-violation"?"R 重启":"E / Esc 跳过");updateReadout()}
     function updateReadout(){const s=seq(),f=frameAt(s,state.time);els.timeline.value=(state.time/s.duration).toFixed(3);els.time.textContent=`${state.time.toFixed(1)} / ${s.duration.toFixed(1)}`;els.frame.textContent=f.file;document.querySelectorAll(".frame").forEach(b=>b.classList.toggle("active",frameAt(s,state.time).label===b.dataset.label))}
     function loop(now){if(state.playing){if(!state.last)state.last=now;state.time+=(now-state.last)/1000;const s=seq();if(state.time>=s.duration){state.time=s.duration;state.playing=false;els.play.textContent="重播"}state.last=now;renderCanvas()}requestAnimationFrame(loop)}
     function renderList(){const vs=visible();els.count.textContent=`${vs.length} / ${sequences.length}`;els.select.innerHTML="";els.list.innerHTML="";for(const s of vs){const opt=document.createElement("option");opt.value=s.id;opt.textContent=`${s.groupName} - ${s.title}`;els.select.append(opt);const item=document.createElement("button");item.type="button";item.className="item";item.dataset.id=s.id;item.innerHTML=`<span class="thumb"><img src="${s.thumb}" alt=""></span><span><span class="item-title">${s.title}</span><span class="item-meta">${s.groupName}<br>${s.duration.toFixed(1)} 秒 / ${s.frames.length} 帧</span></span>`;item.onclick=()=>selectSeq(s.id);els.list.append(item)}if(!vs.some(s=>s.id===state.currentId)&&vs[0])state.currentId=vs[0].id;renderCurrent()}

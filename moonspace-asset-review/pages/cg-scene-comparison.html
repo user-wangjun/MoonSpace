@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CG 与场景一致性对比 - MoonSpace 美术资源审查</title>
+    <style id="theme-vars">
+:root {
+  /* === MoonSpace Color System === */
+  --color-primary: #c8d8e8;
+  --color-primary-dark: #8a9bb0;
+  --color-primary-light: #e8eef5;
+
+  --color-secondary: #2a3040;
+  --color-secondary-dark: #1a1e2a;
+  --color-secondary-light: #3a4050;
+
+  --color-accent: #8b2030;
+  --color-accent-dark: #5a1018;
+  --color-accent-light: #b83050;
+
+  --color-moon-white: #e0e8f0;
+  --color-cold-gray: #607080;
+  --color-deep-blue-black: #0c1018;
+  --color-horror-red: #a02020;
+  --color-wood-brown: #4a3828;
+  --color-tree-green: #2a4830;
+
+  --color-bg-dark: #0c1018;
+  --color-bg-surface: #1a1e2a;
+  --color-bg-card: #222838;
+  --color-bg-elevated: #2a3040;
+
+  --color-text-primary: #c8d8e8;
+  --color-text-secondary: #8a9bb0;
+  --color-text-muted: #607080;
+  --color-text-accent: #e8c0a0;
+
+  --color-border: #2a3040;
+  --color-border-subtle: #1e2230;
+
+  /* === Semantic Aliases (required by fill-html-head.mjs) === */
+  --color-background: #0c1018;
+  --color-foreground: #c8d8e8;
+  --color-card: #222838;
+  --color-muted: #607080;
+  --color-border-border: #2a3040;
+  --color-radius-sm: 2px;
+  --color-radius-md: 4px;
+  --color-radius-lg: 8px;
+
+  /* === Typography === */
+  --font-display: "Noto Serif SC", "SimSun", serif;
+  --font-body: "Inter", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* === Spacing === */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* === Radius === */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* === Shadow === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--color-background);
+    --color-foreground: var(--color-foreground);
+    --color-card: var(--color-card);
+    --color-primary: var(--color-primary);
+    --color-secondary: var(--color-secondary);
+    --color-muted: var(--color-muted);
+    --color-accent: var(--color-accent);
+    --color-border: var(--color-border);
+    --radius-sm: var(--color-radius-sm);
+    --radius-md: var(--color-radius-md);
+    --radius-lg: var(--color-radius-lg);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--color-background); }
+      .text-background { color: var(--color-background); }
+      .border-background { border-color: var(--color-background); }
+      .ring-background { --tw-ring-color: var(--color-background); }
+      .bg-foreground { background-color: var(--color-foreground); }
+      .text-foreground { color: var(--color-foreground); }
+      .border-foreground { border-color: var(--color-foreground); }
+      .ring-foreground { --tw-ring-color: var(--color-foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-secondary { background-color: var(--color-secondary); }
+      .text-secondary { color: var(--color-secondary); }
+      .border-secondary { border-color: var(--color-secondary); }
+      .ring-secondary { --tw-ring-color: var(--color-secondary); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-accent { background-color: var(--color-accent); }
+      .text-accent { color: var(--color-accent); }
+      .border-accent { border-color: var(--color-accent); }
+      .ring-accent { --tw-ring-color: var(--color-accent); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body>
+  <!-- 主容器 -->
+  <div style="max-width: 1440px; margin: 0 auto; padding: 0 2rem;">
+
+    <!-- 顶部导航栏 -->
+    <nav style="display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 0; border-bottom: 1px solid var(--color-border);">
+      <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary); letter-spacing: 0.05em;">
+        MoonSpace <span style="color: var(--color-text-muted); font-size: var(--text-sm); font-family: var(--font-body);">美术资源审查</span>
+      </span>
+      <div style="display: flex; gap: 0.5rem;">
+        <a href="asset-overview.html" class="nav-tab">资源总览</a>
+        <a href="characters.html" class="nav-tab">角色资源</a>
+        <a href="environments.html" class="nav-tab">场景资源</a>
+        <a href="cg-endings.html" class="nav-tab">CG 与结局</a>
+        <a href="cg-scene-comparison.html" class="nav-tab active">CG 对比</a>
+      </div>
+    </nav>
+
+    <!-- 页面标题 -->
+    <header style="padding: 2.5rem 0 2rem 0;">
+      <h1 style="font-family: var(--font-display); font-size: var(--text-3xl); color: var(--color-moon-white); margin: 0 0 0.5rem 0;">
+        CG 与游戏场景一致性审查
+      </h1>
+      <p style="color: var(--color-text-secondary); font-size: var(--text-base); margin: 0;">
+        对比 Ending CG 与实际前院场景中的宫殿大门和月池区域
+      </p>
+    </header>
+
+    <!-- ============================================ -->
+    <!-- 第一组对比：宫殿大门 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 3rem;">
+      <h2 class="section-title">宫殿大门对比</h2>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+
+        <!-- 左列：游戏场景中的宫门位置 -->
+        <div class="compare-card">
+          <h3 class="col-heading">游戏场景中的宫门位置</h3>
+          <div class="image-stage image-stage-large">
+             <img src="../../assets/sprites/moonspace/backgrounds/courtyard_expanded_closed.png" alt="月宫庭院运行时关门背景 - 宫门区域"
+                  class="img-pixel">
+            <!-- 红色虚线标注宫门位置（右上区域） -->
+            <div class="annotation-overlay">
+               <span class="annotation-label">正式 expanded 宫门中轴</span>
+            </div>
+          </div>
+          <p class="desc-text">
+             当前前院入口使用 expanded closed/open 两态的中央宫门轮廓。旧 v9 Gate 候选只作为 <span style="color: #e8a0a0;">STALE</span> 问题证据，不再作为正式画面依据。
+          </p>
+        </div>
+
+        <!-- 右列：BE CG 中的宫殿大门 -->
+        <div class="compare-card">
+          <h3 class="col-heading">BE CG 中的宫殿大门</h3>
+          <div class="cg-thumb-grid">
+            <div class="image-stage">
+              <img src="../assets/cg-be-wugang.png" alt="BE CG - 吴刚污染（宫门）"
+                   class="img-cg">
+            </div>
+            <div class="image-stage">
+              <img src="../assets/cg-be-double.png" alt="BE CG - 双重污染（宫门）"
+                   class="img-cg">
+            </div>
+            <div class="image-stage">
+              <img src="../assets/cg-report-staging.png" alt="复命过场 CG（宫门）"
+                   class="img-cg">
+            </div>
+          </div>
+          <p class="desc-text">
+            CG 中的宫门是 AI 生成的宽大宫殿门面，与游戏前院的临时标记完全不同。
+          </p>
+        </div>
+
+      </div>
+
+      <!-- 差异分析面板 -->
+      <div class="diff-panel">
+        <p class="diff-label">宫门差异</p>
+        <p>CG 中出现了完整的宫殿建筑结构（高大门面、飞檐、纵深走廊），而游戏实际前院只有代码绘制的低干扰临时标记。玩家在游戏中看到的入口和 CG 结局中看到的宫殿门面是两套完全不同的视觉语言。</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 第二组对比：月池 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 3rem;">
+      <h2 class="section-title">月池对比</h2>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+
+        <!-- 左列：游戏场景中的月池 -->
+        <div class="compare-card">
+          <h3 class="col-heading">游戏场景中的月池</h3>
+           <!-- 月池正式运行时图；旧小图仅作 stale 兼容证据 -->
+           <div class="image-stage" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+             <img src="../../assets/sprites/moonspace/moon_pool_large.png" alt="游戏中的月池（144x144 运行时正式图）"
+                  class="img-pixel"
+                 style="width: 256px; height: 256px;">
+           </div>
+           <p class="desc-text">
+             当前运行时月池为 144×144 圆形资源，实际场景中心是 <code>MoonPool(480,300)</code>。旧 <span style="color: #e8a0a0;">moon_pool.png</span> 与 v9 Pool 候选均标记为 <span style="color: #e8a0a0;">STALE</span>，不能作共同造型依据。
+          </p>
+        </div>
+
+        <!-- 右列：BE CG 中的月池 -->
+        <div class="compare-card">
+          <h3 class="col-heading">BE CG 中的月池</h3>
+          <div class="cg-thumb-grid">
+            <div class="image-stage">
+              <img src="../assets/cg-be-wugang.png" alt="BE CG - 吴刚污染（月池倒影）"
+                   class="img-cg">
+            </div>
+            <div class="image-stage">
+              <img src="../assets/cg-be-yutu.png" alt="BE CG - 玉兔污染（月池倒影）"
+                   class="img-cg">
+            </div>
+            <div class="image-stage">
+              <img src="../assets/cg-be-double.png" alt="BE CG - 双重污染（月池根系蔓延）"
+                   class="img-cg">
+            </div>
+          </div>
+          <p class="desc-text">
+            CG 中的月池是大面积暗色水面/地面倒影区域，有根系蔓延和污染扩散效果。
+          </p>
+        </div>
+
+      </div>
+
+      <!-- 差异分析面板 -->
+      <div class="diff-panel">
+        <p class="diff-label">月池差异</p>
+        <p>CG 中的月池是大块暗水地面，玩家倒影中会出现斧/杵等污染标记，水面有根系污染扩散。游戏中的月池仍是原始的小型像素图案，缺少大面积暗水和污染倒影的视觉语言。</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 第三组对比：整体场景氛围 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 3rem;">
+      <h2 class="section-title">整体场景氛围对比</h2>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+
+        <!-- 左列：游戏前院 -->
+        <div class="compare-card">
+          <h3 class="col-heading">游戏前院实际画面</h3>
+          <div class="image-stage image-stage-large">
+             <img src="../../assets/sprites/moonspace/backgrounds/courtyard_expanded_closed.png" alt="游戏庭院场景（960x640 expanded 俯视角）"
+                 class="img-pixel">
+          </div>
+          <p class="desc-text">
+             冷月白 + 青灰色调的精细像素俯视角 2D 场景，当前正式底图为 960×640；逻辑视口按 480×270 再以 2×整数显示。
+          </p>
+        </div>
+
+        <!-- 右列：BE 双重污染 CG -->
+        <div class="compare-card">
+          <h3 class="col-heading">BE 双重污染 CG</h3>
+          <div class="image-stage image-stage-large">
+            <img src="../assets/cg-be-double.png" alt="BE 双重污染 CG（最完整的结局画面）"
+                 class="img-cg">
+          </div>
+          <p class="desc-text">
+             电影感 CG 保留宫门、月池、根系等构图锚点；其空间和角色层仍需按 Batch A 批准后的基准重做/分层，不能把旧候选直接升格为正式资产。
+          </p>
+        </div>
+
+      </div>
+
+      <!-- 差异分析面板 -->
+      <div class="diff-panel">
+        <p class="diff-label">整体差异</p>
+        <p>游戏前院是冷月白+青灰的像素俯视角 2D 场景，BE CG 是 AI 生成的写实风格半俯视/正面视角场景。两者在视角、美术风格、场景复杂度上存在根本性差异。CG 的视觉质量远高于游戏实际画面，宫门和月池的细节在 CG 中存在但在游戏中缺失。</p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 结论与建议 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 4rem;">
+      <h2 class="section-title" style="margin-bottom: 1.5rem;">结论与建议</h2>
+
+      <div class="conclusion-panel">
+        <h3>核心问题：Ending CG 的视觉承诺远超游戏实际场景的交付</h3>
+        <ul>
+          <li>
+            <span class="bullet">&#9679;</span>
+            <span><strong style="color: var(--color-moon-white);">宫门</strong>：CG 有完整宫殿建筑，游戏只有临时标记</span>
+          </li>
+          <li>
+            <span class="bullet">&#9679;</span>
+            <span><strong style="color: var(--color-moon-white);">月池</strong>：CG 有大面积暗水污染，游戏只有小型像素图</span>
+          </li>
+          <li>
+            <span class="bullet">&#9679;</span>
+            <span><strong style="color: var(--color-moon-white);">风格差距</strong>：CG 是写实 AI 图，游戏是像素风格</span>
+          </li>
+          <li>
+            <span class="bullet">&#9679;</span>
+            <span><strong style="color: var(--color-moon-white);">建议</strong>：需要统一视觉语言，要么提升游戏场景美术匹配 CG 描述，要么调整 CG 匹配游戏像素风格</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+  </div>
+
+    <style>
+      /* 页面基础样式 */
+      body {
+        background-color: var(--color-deep-blue-black);
+        color: var(--color-text-primary);
+        font-family: var(--font-body);
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
+
+      /* 导航栏样式 */
+      .nav-tab {
+        padding: 0.625rem 1.25rem;
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        color: var(--color-text-secondary);
+        font-size: var(--text-sm);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        background: transparent;
+      }
+      .nav-tab:hover {
+        color: var(--color-text-primary);
+        background-color: var(--color-bg-card);
+        border-color: var(--color-border);
+      }
+      .nav-tab.active {
+        color: var(--color-text-primary);
+        background-color: var(--color-bg-card);
+        border-color: var(--color-accent);
+        box-shadow: 0 0 8px rgba(139, 32, 48, 0.3);
+      }
+
+      /* 区域标题 */
+      .section-title {
+        font-family: var(--font-display);
+        font-size: var(--text-2xl);
+        color: var(--color-moon-white);
+        margin: 0 0 0.5rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--color-border);
+      }
+      .section-title::after {
+        content: '';
+        display: block;
+        width: 3rem;
+        height: 2px;
+        margin-top: 0.5rem;
+        background: var(--color-accent);
+      }
+
+      /* 对比卡片 */
+      .compare-card {
+        background-color: var(--color-bg-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      }
+      .compare-card:hover {
+        border-color: var(--color-bg-elevated);
+        box-shadow: var(--shadow-lg);
+      }
+
+      /* 图片展示舞台 */
+      .image-stage {
+        background-color: var(--color-deep-blue-black);
+        border: 1px solid var(--color-border-subtle);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      /* CG 图：自动渲染（非像素） */
+      .img-cg {
+        image-rendering: auto;
+        display: block;
+        max-width: 100%;
+        height: auto;
+        border-radius: var(--radius-sm);
+      }
+
+      /* 游戏场景图：像素化渲染 */
+      .img-pixel {
+        image-rendering: pixelated;
+        display: block;
+        max-width: 100%;
+        height: auto;
+        border-radius: var(--radius-sm);
+      }
+
+      /* 大图舞台 */
+      .image-stage-large {
+        max-height: 480px;
+      }
+      .image-stage-large img {
+        max-height: 480px;
+        object-fit: contain;
+      }
+
+      /* 红色虚线标注框 - 标注宫门位置 */
+      .annotation-overlay {
+        position: absolute;
+        top: 5%;
+        right: 5%;
+        width: 45%;
+        height: 40%;
+        border: 2px dashed rgba(160, 32, 32, 0.9);
+        border-radius: var(--radius-sm);
+        pointer-events: none;
+        z-index: 2;
+      }
+      .annotation-label {
+        position: absolute;
+        top: -1.5rem;
+        left: 0;
+        background: rgba(160, 32, 32, 0.9);
+        color: #e0e8f0;
+        font-size: var(--text-xs);
+        padding: 0.15rem 0.5rem;
+        border-radius: 2px;
+        white-space: nowrap;
+        font-family: var(--font-body);
+      }
+
+      /* 差异分析面板 */
+      .diff-panel {
+        background-color: var(--color-bg-surface);
+        border: 1px solid var(--color-border);
+        border-left: 3px solid var(--color-horror-red);
+        border-radius: var(--radius-md);
+        padding: 1.25rem 1.5rem;
+        margin-top: 1.5rem;
+      }
+      .diff-panel p {
+        font-size: var(--text-sm);
+        color: var(--color-text-secondary);
+        line-height: var(--leading-relaxed);
+        margin: 0;
+      }
+      .diff-panel .diff-label {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        color: var(--color-horror-red);
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+      }
+
+      /* 结论面板 */
+      .conclusion-panel {
+        background-color: rgba(139, 32, 48, 0.08);
+        border: 1px solid rgba(139, 32, 48, 0.3);
+        border-left: 4px solid var(--color-accent);
+        border-radius: var(--radius-md);
+        padding: 1.5rem 2rem;
+      }
+      .conclusion-panel h3 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        color: var(--color-accent-light);
+        margin: 0 0 1rem 0;
+      }
+      .conclusion-panel ul {
+        list-style: none;
+        padding: 0;
+        margin: 0.75rem 0 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+      }
+      .conclusion-panel li {
+        display: flex;
+        gap: 0.625rem;
+        align-items: flex-start;
+        font-size: var(--text-sm);
+        color: var(--color-text-secondary);
+        line-height: var(--leading-relaxed);
+      }
+      .conclusion-panel .bullet {
+        color: var(--color-accent);
+        font-weight: 700;
+        min-width: 1rem;
+      }
+
+      /* 对比列标题 */
+      .col-heading {
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        color: var(--color-moon-white);
+        margin: 0 0 1rem 0;
+      }
+
+      /* 小 CG 缩略图网格 */
+      .cg-thumb-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .cg-thumb-grid .image-stage {
+        max-height: 220px;
+      }
+      .cg-thumb-grid img {
+        max-height: 220px;
+        object-fit: contain;
+      }
+
+      /* 说明文字 */
+      .desc-text {
+        font-size: var(--text-sm);
+        color: var(--color-text-secondary);
+        line-height: var(--leading-relaxed);
+        margin: 0.75rem 0 0 0;
+      }
+
+      /* 滚动条美化 */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--color-deep-blue-black);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--color-bg-elevated);
+        border-radius: 3px;
+      }
+    </style>
+</body>
+</html>

@@ -23,7 +23,32 @@ AUDIO_FILES = {
     "dialog_open": "audio/dialog_open.wav",
     "transition_found": "audio/transition_found.wav",
     "ambient_moon_palace": "audio/ambient_moon_palace.wav",
+    # CG one-shots stay in this single audio layer so every sequence can stop
+    # its temporary sounds on skip or scene change.
+    "cg_download_start": "audio/cg_download_start.wav",
+    "cg_download_complete": "audio/cg_download_complete.wav",
+    "cg_blood_moon": "audio/cg_blood_moon.wav",
+    "cg_screen_crack": "audio/cg_screen_crack.wav",
+    "cg_palace_transition": "audio/cg_palace_transition.wav",
+    "cg_wugang_axe": "audio/cg_wugang_axe.wav",
+    "cg_yutu_pestle": "audio/cg_yutu_pestle.wav",
+    "cg_moon_pool": "audio/cg_moon_pool.wav",
+    "cg_laurel_roots": "audio/cg_laurel_roots.wav",
+    "cg_earth_arrival": "audio/cg_earth_arrival.wav",
 }
+
+CG_AUDIO_KEYS = (
+    "cg_download_start",
+    "cg_download_complete",
+    "cg_blood_moon",
+    "cg_screen_crack",
+    "cg_palace_transition",
+    "cg_wugang_axe",
+    "cg_yutu_pestle",
+    "cg_moon_pool",
+    "cg_laurel_roots",
+    "cg_earth_arrival",
+)
 
 
 class AudioManager:
@@ -37,6 +62,16 @@ class AudioManager:
         "dialog_open": 0.12,
         "transition_found": 0.26,
         "ambient_moon_palace": 0.10,
+        "cg_download_start": 0.07,
+        "cg_download_complete": 0.08,
+        "cg_blood_moon": 0.08,
+        "cg_screen_crack": 0.09,
+        "cg_palace_transition": 0.08,
+        "cg_wugang_axe": 0.08,
+        "cg_yutu_pestle": 0.07,
+        "cg_moon_pool": 0.06,
+        "cg_laurel_roots": 0.07,
+        "cg_earth_arrival": 0.08,
     }
 
     def __init__(self, event_bus: EventBus, mixer=None) -> None:
@@ -45,6 +80,7 @@ class AudioManager:
         self.enabled = False
         self.sounds = {}
         self._ambient_playing = False
+        self._cg_played_tokens: set[str] = set()
         self._init_mixer()
         self._load_sounds()
         self._subscribe()
@@ -75,6 +111,30 @@ class AudioManager:
             except pygame.error:
                 self.enabled = False
         self._ambient_playing = False
+
+    def begin_cg_cycle(self) -> None:
+        """Clear one-shot bookkeeping and silence any previous CG audio."""
+        self.stop_cg_sounds()
+
+    def play_cg_cue(self, key: str, *, token: str | None = None) -> None:
+        """Play a CG cue once for a sequence boundary."""
+        cue_token = token or key
+        if cue_token in self._cg_played_tokens:
+            return
+        self._cg_played_tokens.add(cue_token)
+        self.play(key)
+
+    def stop_cg_sounds(self) -> None:
+        """Stop all temporary CG one-shots without affecting the ambient bed."""
+        for key in CG_AUDIO_KEYS:
+            sound = self.sounds.get(key)
+            if sound is None:
+                continue
+            try:
+                sound.stop()
+            except pygame.error:
+                self.enabled = False
+        self._cg_played_tokens.clear()
 
     def play(self, key: str) -> None:
         """Play a named sound effect when available."""

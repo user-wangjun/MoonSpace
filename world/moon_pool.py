@@ -47,8 +47,9 @@ class MoonPool:
         anomaly_sprite: pygame.Surface | None = None,
         observer_center: tuple[int, int] | None = None,
         show_reflection: bool = False,
+        show_pollution: bool = False,
     ) -> None:
-        """绘制正式月池资源与倒影反馈。"""
+        """绘制正式月池资源、污染附加层与倒影反馈。"""
         rect = self.rect.move(camera_offset)
         visual_rect = self.visual_rect.move(camera_offset)
         try:
@@ -70,6 +71,7 @@ class MoonPool:
                 anomaly_sprite=anomaly_sprite,
                 observer_center=observer_center,
                 show_reflection=show_reflection,
+                show_pollution=show_pollution,
             )
             return
 
@@ -85,6 +87,13 @@ class MoonPool:
             draw_filled_rect(surface, (x, y, 29, 1), palette.POOL_HIGHLIGHT)
         if self.reflection_flash_timer > 0:
             self._draw_reflection_face(surface, inner)
+        if show_pollution:
+            self._draw_water_feedback(
+                surface,
+                visual_rect,
+                observer_center=observer_center,
+                show_pollution=True,
+            )
 
     def _draw_water_feedback(
         self,
@@ -95,10 +104,13 @@ class MoonPool:
         anomaly_sprite: pygame.Surface | None = None,
         observer_center: tuple[int, int] | None = None,
         show_reflection: bool = False,
+        show_pollution: bool = False,
     ) -> None:
-        """在池面内部绘制低干扰波纹和违规倒影。"""
+        """在池面内部绘制低干扰波纹、污染扩散和违规倒影。"""
         feedback = pygame.Surface(visual_rect.size, pygame.SRCALPHA)
         inner = pygame.Rect(0, 0, *visual_rect.size).inflate(-self.WATER_INSET * 2, -self.WATER_INSET * 2)
+        if show_pollution:
+            self._draw_pollution_overlay(feedback, inner)
         if show_reflection and reflection_sprite is not None:
             anomalous = self.reflection_flash_timer > 0
             sprite = anomaly_sprite if anomalous and anomaly_sprite is not None else reflection_sprite
@@ -116,6 +128,37 @@ class MoonPool:
             y = inner.centery - 18 + i * 17
             draw_filled_rect(feedback, (x, y, width, 1), (*palette.HORROR_CYAN_GRAY, 62))
         surface.blit(feedback, visual_rect.topleft)
+
+    def _draw_pollution_overlay(self, feedback: pygame.Surface, water_rect: pygame.Rect) -> None:
+        """以独立 Alpha 层表现污染从池心向外扩散，不覆盖石质池沿。"""
+        layer = pygame.Surface(feedback.get_size(), pygame.SRCALPHA)
+        center = water_rect.center
+        spread = int((math.sin(self._time * 1.7) + 1.0) * 2.0)
+        max_radius = min(water_rect.width, water_rect.height) // 2
+
+        for index, base_radius in enumerate((22, 36, 50)):
+            radius = min(max_radius, base_radius + spread + index)
+            alpha = max(28, 88 - index * 18)
+            pygame.draw.circle(layer, (138, 22, 42, alpha), center, radius, 1)
+
+        for index in range(8):
+            angle = self._time * (0.45 + index * 0.02) + index * math.tau / 8.0
+            inner_radius = 18 + (index % 3) * 6
+            outer_radius = min(max_radius, 44 + (index % 4) * 4 + spread)
+            start = (
+                round(center[0] + math.cos(angle) * inner_radius),
+                round(center[1] + math.sin(angle) * inner_radius),
+            )
+            end = (
+                round(center[0] + math.cos(angle) * outer_radius),
+                round(center[1] + math.sin(angle) * outer_radius),
+            )
+            pygame.draw.line(layer, (108, 16, 34, 46), start, end, 1)
+
+        mask = pygame.Surface(feedback.get_size(), pygame.SRCALPHA)
+        pygame.draw.ellipse(mask, (255, 255, 255, 255), water_rect)
+        layer.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        feedback.blit(layer, (0, 0))
 
     def _draw_player_reflection(
         self,

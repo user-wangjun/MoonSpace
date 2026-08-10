@@ -6,7 +6,7 @@ import struct
 
 import pygame
 
-from core.audio import AUDIO_FILES, AudioManager
+from core.audio import AUDIO_FILES, CG_AUDIO_KEYS, AudioManager
 from core.event_bus import (
     DIALOG_ACTIVE_CHANGED,
     EventBus,
@@ -124,3 +124,22 @@ def test_audio_manager_handles_mixer_init_failure_without_crashing():
     audio.play_transition_found()
 
     assert audio.enabled is False
+
+
+def test_audio_manager_cg_cues_are_once_per_token_and_stop_as_a_group():
+    FakeSound.played = []
+    FakeSound.stopped = []
+    audio = AudioManager(EventBus(), mixer=FakeMixer())
+
+    audio.begin_cg_cycle()
+    audio.play_cg_cue("cg_wugang_axe", token="report:4.8")
+    audio.play_cg_cue("cg_wugang_axe", token="report:4.8")
+
+    assert FakeSound.played.count("cg_wugang_axe.wav") == 1
+    audio.stop_cg_sounds()
+    assert "cg_wugang_axe.wav" in FakeSound.stopped
+    assert set(audio._cg_played_tokens) == set()
+
+
+def test_audio_manager_declares_all_cg_cues_in_the_same_audio_registry():
+    assert set(CG_AUDIO_KEYS).issubset(AUDIO_FILES)

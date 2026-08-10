@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MoonSpace Runtime Closure Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090d14;
+      --panel: #121a27;
+      --panel-2: #182334;
+      --line: #2a3b52;
+      --text: #e7f0fb;
+      --muted: #9aadc3;
+      --soft: #c3d2e2;
+      --red: #bd4658;
+      --red-soft: #f0a8b2;
+      --green: #6ed49a;
+      --amber: #e8bb68;
+      --blue: #79b7ed;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 78% 0%, rgba(77, 104, 148, .18), transparent 34rem),
+        linear-gradient(180deg, #0c121d 0%, var(--bg) 42rem);
+      color: var(--text);
+      font: 15px/1.65 "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+    }
+    a { color: var(--red-soft); }
+    a:hover { color: #fff; }
+    .wrap { width: min(1440px, calc(100% - 36px)); margin: 0 auto; }
+    .hero { padding: 48px 0 30px; }
+    .eyebrow { color: var(--red-soft); letter-spacing: .16em; text-transform: uppercase; font-size: 12px; }
+    h1 { margin: 8px 0 10px; font-size: clamp(28px, 5vw, 54px); line-height: 1.08; letter-spacing: -.03em; }
+    h2 { margin: 0 0 8px; font-size: 25px; line-height: 1.2; }
+    h3 { margin: 0; font-size: 17px; line-height: 1.25; }
+    p { margin: 6px 0; }
+    .lead { max-width: 850px; color: var(--soft); font-size: 17px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+    .button, .tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      border: 1px solid var(--line); border-radius: 999px;
+      background: rgba(24, 35, 52, .85); color: var(--soft);
+      padding: 7px 12px; text-decoration: none; font-size: 13px;
+    }
+    .button:hover { border-color: var(--red); background: rgba(189, 70, 88, .16); }
+    .status { border-color: rgba(110, 212, 154, .45); color: #a6f2c0; background: rgba(56, 126, 84, .18); }
+    .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 22px 0 30px; }
+    .stat { min-height: 104px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(18, 26, 39, .9); }
+    .stat strong { display: block; font-size: 27px; color: var(--text); line-height: 1.1; }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .review-note {
+      border: 1px solid rgba(232, 187, 104, .35); border-left: 4px solid var(--amber);
+      border-radius: 10px; background: rgba(96, 70, 26, .18); padding: 14px 16px; color: var(--soft);
+    }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+    .tag.pass { border-color: rgba(110, 212, 154, .45); color: #a6f2c0; }
+    .tag.focus { border-color: rgba(232, 187, 104, .5); color: #f4d28f; }
+    .tag.frozen { border-color: rgba(121, 183, 237, .45); color: #abd5fa; }
+    .tag.fallback { border-color: rgba(189, 70, 88, .5); color: var(--red-soft); }
+    section { padding: 44px 0 4px; scroll-margin-top: 20px; }
+    .section-head { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 15px; }
+    .section-head p { max-width: 760px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      overflow: hidden; border: 1px solid var(--line); border-radius: 12px;
+      background: linear-gradient(180deg, rgba(24, 35, 52, .96), rgba(15, 22, 34, .96));
+      box-shadow: 0 12px 35px rgba(0, 0, 0, .16);
+    }
+    figure { margin: 0; cursor: zoom-in; }
+    figure img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #06090f; image-rendering: auto; }
+    figcaption { padding: 10px 12px 4px; }
+    .card-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .card-title .tag { padding: 3px 8px; font-size: 11px; white-space: nowrap; }
+    .annotation { padding: 0 12px 12px; color: var(--muted); font-size: 13px; }
+    .annotation strong { color: var(--soft); font-weight: 600; }
+    .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 0; }
+    .timeline div { padding: 11px 12px; border-radius: 9px; background: rgba(10, 15, 24, .54); border: 1px solid rgba(42, 59, 82, .8); }
+    .timeline b { display: block; color: var(--text); }
+    .timeline span { color: var(--muted); font-size: 13px; }
+    .asset-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .asset-link { display: block; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: rgba(18, 26, 39, .8); text-decoration: none; }
+    .asset-link b { display: block; color: var(--text); font-size: 13px; }
+    .asset-link span { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .checklist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+    .check { display: flex; gap: 10px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(18, 26, 39, .76); color: var(--soft); }
+    .check input { margin-top: 5px; accent-color: var(--red); }
+    .check small { display: block; color: var(--muted); }
+    footer { padding: 52px 0 70px; color: var(--muted); }
+    .footer-box { border-top: 1px solid var(--line); padding-top: 18px; display: flex; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
+    dialog { width: min(1100px, calc(100% - 24px)); padding: 0; border: 1px solid var(--line); border-radius: 12px; background: #0b111b; color: var(--text); box-shadow: 0 30px 100px rgba(0, 0, 0, .7); }
+    dialog::backdrop { background: rgba(0, 0, 0, .78); }
+    .modal-inner { padding: 10px; }
+    .modal-inner img { width: 100%; display: block; }
+    .modal-caption { display: flex; justify-content: space-between; gap: 12px; padding: 9px 4px 2px; color: var(--soft); }
+    .close { border: 0; border-radius: 7px; padding: 3px 10px; color: var(--soft); background: #202d40; cursor: pointer; }
+    @media (max-width: 1100px) { .summary { grid-template-columns: repeat(3, 1fr); } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .wrap { width: min(100% - 22px, 560px); } .hero { padding-top: 28px; } .summary, .grid, .asset-strip, .checklist, .timeline { grid-template-columns: 1fr; } .section-head { display: block; } }
+  </style>
+</head>
+<body>
+  <header class="hero wrap">
+    <div class="eyebrow">MoonSpace / Runtime Closure Preview</div>
+    <h1>运行时视觉收口审查页</h1>
+    <p class="lead">这不是静态候选板：下面全部来自当前工作区的真实运行时截图。每个卡片都标明了分辨率、时间边界、应该审查的遮挡关系，以及当前结论。</p>
+    <div class="hero-actions">
+      <a class="button status" href="#review-checklist">开始逐项审查 ↓</a>
+      <a class="button" href="asset-overview.html">返回资源总览</a>
+      <a class="button" href="../assets/candidates/contact-sheets/runtime-closure-review-preview.png">打开 20-panel 总览图</a>
+    </div>
+    <div class="summary">
+      <div class="stat"><strong>8.4s</strong><span>复命总时长 / 7 镜 × 1.2s</span></div>
+      <div class="stat"><strong>D1–D3</strong><span>死亡三镜 / D3 持续</span></div>
+      <div class="stat"><strong>4 layers</strong><span>药臼后 / 本体 / 手杵 / 药臼前</span></div>
+      <div class="stat"><strong>33</strong><span>正式 CG 镜头路径</span></div>
+      <div class="stat"><strong>480/960</strong><span>逻辑画布与 2×截图</span></div>
+      <div class="stat"><strong>334</strong><span>自动化测试通过</span></div>
+    </div>
+    <div class="review-note"><strong>审查规则：</strong>绿色 PASS 表示实现已按运行时证据核验；黄色 FOCUS 是请你重点看画面关系/时序的地方；蓝色 FROZEN 表示正式 CG 资源在本轮保持冻结；红色 FALLBACK 表示兼容回退，不是主路径画面。</div>
+    <div class="legend">
+      <span class="tag pass">PASS / 已核验</span>
+      <span class="tag focus">FOCUS / 请重点看</span>
+      <span class="tag frozen">FROZEN / 正式 CG 冻结</span>
+      <span class="tag fallback">FALLBACK / 兼容回退</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="yutu">
+      <div class="section-head">
+        <div><h2>01 · 玉兔分层与遮挡</h2><p>审查目标：药臼只出现一次；玉兔本体、手/杵覆盖层和药臼前沿关系清楚；玩家前后移动时不破坏深度顺序。</p></div>
+        <span class="tag pass">PASS / runtime</span>
+      </div>
+      <div class="grid">
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-idle-960.png" data-title="Y1 / idle"><img src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-idle-960.png" alt="玉兔 idle 运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>Y1 · Idle</h3><span class="tag pass">PASS</span></div></figcaption><div class="annotation"><strong>看：</strong>静态药臼是否只有一份；本体底部与药臼中心是否对齐。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-mid-action-960.png" data-title="Y2 / mid-action"><img src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-mid-action-960.png" alt="玉兔捣药动作运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>Y2 · Mid-action</h3><span class="tag focus">FOCUS</span></div></figcaption><div class="annotation"><strong>看：</strong>手/杵覆盖层是否随动作变化；杵是否落在药臼内，不漂浮或穿出。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-player-front-960.png" data-title="Y3 / player front"><img src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-player-front-960.png" alt="玩家位于玉兔前方的运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>Y3 · Player front</h3><span class="tag focus">FOCUS</span></div></figcaption><div class="annotation"><strong>看：</strong>玩家位于前景时，玉兔/药臼边缘与玩家身体的遮挡是否自然。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-player-behind-960.png" data-title="Y4 / player behind"><img src="../assets/candidates/contact-sheets/runtime-check-courtyard-yutu-player-behind-960.png" alt="玩家位于玉兔后方的运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>Y4 · Player behind</h3><span class="tag focus">FOCUS</span></div></figcaption><div class="annotation"><strong>看：</strong>玩家位于后景时，玉兔主体是否保持完整；没有重复旧捣药台。</div></article>
+      </div>
+      <div class="timeline"><div><b>本体</b><span>透明 4×4 body atlas</span></div><div><b>手 / 杵</b><span>透明 animated overlay</span></div><div><b>药臼</b><span>static mortar + preserved 16×16 collision</span></div></div>
+    </section>
+
+    <section id="report">
+      <div class="section-head">
+        <div><h2>02 · 复命 R1–R7</h2><p>审查目标：每个镜头严格占用 1.2 秒，字幕进入底部安全区，R5/R7 的交接物不被字幕盖住。</p></div>
+        <span class="tag pass">PASS / 8.4s</span>
+      </div>
+      <div class="grid">
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-cg-report-01-960.png" data-title="Report R1 / 0.0s"><img src="../assets/candidates/contact-sheets/runtime-cg-report-01-960.png" alt="复命 R1 运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>R1 · 0.0s</h3><span class="tag pass">1.2s</span></div></figcaption><div class="annotation"><strong>边界：</strong>起始镜头；字幕在底部专用安全带，画面主体不被盖住。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-cg-report-05-960.png" data-title="Report R5 / 4.8s"><img src="../assets/candidates/contact-sheets/runtime-cg-report-05-960.png" alt="复命 R5 运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>R5 · 4.8s</h3><span class="tag focus">交接物</span></div></figcaption><div class="annotation"><strong>重点：</strong>递交记录时，手、玉简/记录与字幕安全区之间要留出清晰层次。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-cg-report-07-960.png" data-title="Report R7 / 7.2s"><img src="../assets/candidates/contact-sheets/runtime-cg-report-07-960.png" alt="复命 R7 运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>R7 · 7.2s</h3><span class="tag focus">末镜</span></div></figcaption><div class="annotation"><strong>边界：</strong>最后 1.2 秒；到 8.4 秒才结束并打开正式对话，E 可提前跳过。</div></article>
+      </div>
+    </section>
+
+    <section id="death">
+      <div class="section-head">
+        <div><h2>03 · 死亡 D1–D3 与黑幕</h2><p>审查目标：2.4 秒以前不提前黑；D3 持续显示；黑幕独立从 2.4 秒开始，约 4.0 秒到上限。</p></div>
+        <span class="tag focus">FOCUS / timing</span>
+      </div>
+      <div class="grid">
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-cg-death-violation-01-960.png" data-title="Death D1 / 0.0–1.2s"><img src="../assets/candidates/contact-sheets/runtime-cg-death-violation-01-960.png" alt="死亡 D1 运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>D1 · 0.0–1.2s</h3><span class="tag pass">NO BLACK</span></div></figcaption><div class="annotation"><strong>看：</strong>第一镜独立显示；黑幕 alpha 应保持为 0。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-cg-death-violation-02-960.png" data-title="Death D2 / 1.2–2.4s"><img src="../assets/candidates/contact-sheets/runtime-cg-death-violation-02-960.png" alt="死亡 D2 运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>D2 · 1.2–2.4s</h3><span class="tag pass">NO BLACK</span></div></figcaption><div class="annotation"><strong>看：</strong>第二镜结束前，黑幕仍未开始；D1→D2 边界不跳帧。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-cg-death-violation-03-960.png" data-title="Death D3 / persistent"><img src="../assets/candidates/contact-sheets/runtime-cg-death-violation-03-960.png" alt="死亡 D3 运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>D3 · ≥2.4s</h3><span class="tag focus">PERSIST</span></div></figcaption><div class="annotation"><strong>重点：</strong>D3 保持；黑幕渐入；“按 R 键重新开始”应清晰可读。</div></article>
+      </div>
+    </section>
+
+    <section id="opening">
+      <div class="section-head">
+        <div><h2>04 · 开场 CG</h2><p>审查目标：首镜与末镜完整，跳过提示清楚；本轮只核对运行时接入与音效生命周期，正式 CG 资源保持冻结。</p></div>
+        <span class="tag frozen">FROZEN / 15s</span>
+      </div>
+      <div class="grid">
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-opening-first-960.png" data-title="Opening / first"><img src="../assets/candidates/contact-sheets/runtime-check-opening-first-960.png" alt="开场首镜运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>O1 · first</h3><span class="tag pass">PASS</span></div></figcaption><div class="annotation"><strong>看：</strong>下载起始提示、画面比例与 E/ESC 跳过提示。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-opening-last-960.png" data-title="Opening / last"><img src="../assets/candidates/contact-sheets/runtime-check-opening-last-960.png" alt="开场末镜运行时截图" loading="lazy" /></figure><figcaption><div class="card-title"><h3>O8 · last</h3><span class="tag focus">END</span></div></figcaption><div class="annotation"><strong>看：</strong>末镜是否完整落到黑场；跳过或自然结束后不残留 CG 音效。</div></article>
+      </div>
+    </section>
+
+    <section id="endings">
+      <div class="section-head">
+        <div><h2>05 · 五个正式结局</h2><p>审查目标：每个正式 ID 的首尾镜头身份清楚、字幕安全；蓝色标记表示资源和 ID 在本轮冻结，不代表需要重新创作。</p></div>
+        <span class="tag frozen">FROZEN / 5 IDs</span>
+      </div>
+      <div class="grid">
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-he_return_earth-first-960.png" data-title="HE / first"><img src="../assets/candidates/contact-sheets/runtime-check-ending-he_return_earth-first-960.png" alt="HE 结局首镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>HE · first</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>正式 ID：</strong><code>he_return_earth</code>；检查月面返程的起始语义。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-he_return_earth-last-960.png" data-title="HE / last"><img src="../assets/candidates/contact-sheets/runtime-check-ending-he_return_earth-last-960.png" alt="HE 结局末镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>HE · last</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>重点：</strong>现实房间晨光抵达，不能误读成月面过渡镜。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_wugang-first-960.png" data-title="BE Wu Gang / first"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_wugang-first-960.png" alt="吴刚坏结局首镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 吴刚 · first</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>正式 ID：</strong><code>be_wugang</code>；检查污染与伐桂身份的第一印象。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_wugang-last-960.png" data-title="BE Wu Gang / last"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_wugang-last-960.png" alt="吴刚坏结局末镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 吴刚 · last</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>重点：</strong>新伐桂人身份是否读得清，字幕是否压住面部/根系。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_yutu-first-960.png" data-title="BE Yutu / first"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_yutu-first-960.png" alt="玉兔坏结局首镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 玉兔 · first</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>正式 ID：</strong><code>be_yutu</code>；检查兔妖/药臼焦点是否明确。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_yutu-last-960.png" data-title="BE Yutu / last"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_yutu-last-960.png" alt="玉兔坏结局末镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 玉兔 · last</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>重点：</strong>新捣药人焦点、药臼/杵与血根背景不互相抢主体。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_double-first-960.png" data-title="BE Double / first"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_double-first-960.png" alt="双重坏结局首镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 双重 · first</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>正式 ID：</strong><code>be_double</code>；检查两份记录重叠的叙事入口。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_double-last-960.png" data-title="BE Double / last"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_double-last-960.png" alt="双重坏结局末镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 双重 · last</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>重点：</strong>树皮面孔成为终点焦点，血丝纹理不能盖住面部识别。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_change-first-960.png" data-title="BE Chang'e / first"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_change-first-960.png" alt="嫦娥坏结局首镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 嫦娥 · first</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>正式 ID：</strong><code>be_change</code>；检查空殿/留下来的语义。</div></article>
+        <article class="card"><figure data-src="../assets/candidates/contact-sheets/runtime-check-ending-be_change-last-960.png" data-title="BE Chang'e / last"><img src="../assets/candidates/contact-sheets/runtime-check-ending-be_change-last-960.png" alt="嫦娥坏结局末镜" loading="lazy" /></figure><figcaption><div class="card-title"><h3>BE 嫦娥 · last</h3><span class="tag frozen">ID</span></div></figcaption><div class="annotation"><strong>重点：</strong>人物居中、月宫纵深、字幕安全区和结局余味。</div></article>
+      </div>
+    </section>
+
+    <section id="assets">
+      <div class="section-head">
+        <div><h2>06 · 当前主路径资源</h2><p>这些链接用于对照卡片中的运行时画面；旧资源仍按兼容策略保留，不把 fallback 误认成主路径。</p></div>
+        <span class="tag pass">ASSET CONTRACT</span>
+      </div>
+      <div class="asset-strip">
+        <a class="asset-link" href="../../assets/sprites/moonspace/yutu_body_4x4.png"><b>yutu_body_4x4.png</b><span>透明 4×4 本体图集</span></a>
+        <a class="asset-link" href="../../assets/sprites/moonspace/yutu_pestle_overlay_4x4.png"><b>yutu_pestle_overlay_4x4.png</b><span>透明 4×4 手 / 杵图层</span></a>
+        <a class="asset-link" href="../../assets/sprites/moonspace/props/yutu_mortar.png"><b>yutu_mortar.png</b><span>静态药臼 / 前后遮挡</span></a>
+        <a class="asset-link" href="asset-overview.html#stage2-closure"><b>验收报告与总览</b><span>回到现有 review 页面</span></a>
+      </div>
+    </section>
+
+    <section id="review-checklist">
+      <div class="section-head">
+        <div><h2>07 · 你的审查清单</h2><p>勾选状态只保存在当前浏览器，不写入项目文件。建议先看黄色 FOCUS，再看蓝色 FROZEN。</p></div>
+        <span class="tag focus">YOUR REVIEW</span>
+      </div>
+      <div class="checklist">
+        <label class="check"><input type="checkbox" data-review="mortar" /> <span><b>玉兔：药臼没有重复出现</b><small>Y1–Y4 中只保留一份静态药臼。</small></span></label>
+        <label class="check"><input type="checkbox" data-review="pestle" /> <span><b>玉兔：杵与手的位置自然</b><small>Y2 中杵应落入药臼，不漂浮、不穿透。</small></span></label>
+        <label class="check"><input type="checkbox" data-review="depth" /> <span><b>玉兔：玩家前后遮挡连续</b><small>Y3/Y4 的深度变化不应改变碰撞锚点。</small></span></label>
+        <label class="check"><input type="checkbox" data-review="report" /> <span><b>复命：字幕与交接物不冲突</b><small>重点看 R5、R7 的底部安全区。</small></span></label>
+        <label class="check"><input type="checkbox" data-review="death" /> <span><b>死亡：2.4 秒前不提前黑</b><small>D1/D2 无黑幕；D3 持续且 R 提示可读。</small></span></label>
+        <label class="check"><input type="checkbox" data-review="endings" /> <span><b>结局：五个 ID 的身份读得清</b><small>HE 与四个 BE 的首尾镜头没有混淆。</small></span></label>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <div class="footer-box">
+      <span>真实运行时证据：480×270 / 960×540 · 52 captures · 334 tests passed</span>
+      <span><a href="asset-overview.html">asset-overview.html</a> · <a href="../stage2-alignment-report.md">stage2-alignment-report.md</a></span>
+    </div>
+  </footer>
+
+  <dialog id="lightbox">
+    <div class="modal-inner">
+      <img id="lightbox-image" alt="放大审查图" />
+      <div class="modal-caption"><span id="lightbox-title"></span><button class="close" type="button">关闭 / Esc</button></div>
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      const dialog = document.querySelector('#lightbox');
+      const lightboxImage = document.querySelector('#lightbox-image');
+      const lightboxTitle = document.querySelector('#lightbox-title');
+      document.querySelectorAll('figure[data-src]').forEach((figure) => {
+        figure.addEventListener('click', () => {
+          lightboxImage.src = figure.dataset.src;
+          lightboxTitle.textContent = figure.dataset.title || '';
+          dialog.showModal();
+        });
+      });
+      document.querySelector('.close').addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+      document.querySelectorAll('input[data-review]').forEach((input) => {
+        const key = 'moonspace-review-' + input.dataset.review;
+        input.checked = localStorage.getItem(key) === '1';
+        input.addEventListener('change', () => localStorage.setItem(key, input.checked ? '1' : '0'));
+      });
+    })();
+  </script>
+</body>
+</html>

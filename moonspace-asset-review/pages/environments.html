@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>场景资源 - MoonSpace 美术资源审查</title>
+    <style id="theme-vars">
+:root {
+  /* === MoonSpace Color System === */
+  --color-primary: #c8d8e8;
+  --color-primary-dark: #8a9bb0;
+  --color-primary-light: #e8eef5;
+
+  --color-secondary: #2a3040;
+  --color-secondary-dark: #1a1e2a;
+  --color-secondary-light: #3a4050;
+
+  --color-accent: #8b2030;
+  --color-accent-dark: #5a1018;
+  --color-accent-light: #b83050;
+
+  --color-moon-white: #e0e8f0;
+  --color-cold-gray: #607080;
+  --color-deep-blue-black: #0c1018;
+  --color-horror-red: #a02020;
+  --color-wood-brown: #4a3828;
+  --color-tree-green: #2a4830;
+
+  --color-bg-dark: #0c1018;
+  --color-bg-surface: #1a1e2a;
+  --color-bg-card: #222838;
+  --color-bg-elevated: #2a3040;
+
+  --color-text-primary: #c8d8e8;
+  --color-text-secondary: #8a9bb0;
+  --color-text-muted: #607080;
+  --color-text-accent: #e8c0a0;
+
+  --color-border: #2a3040;
+  --color-border-subtle: #1e2230;
+
+  /* === Semantic Aliases (required by fill-html-head.mjs) === */
+  --color-background: #0c1018;
+  --color-foreground: #c8d8e8;
+  --color-card: #222838;
+  --color-muted: #607080;
+  --color-border-border: #2a3040;
+  --color-radius-sm: 2px;
+  --color-radius-md: 4px;
+  --color-radius-lg: 8px;
+
+  /* === Typography === */
+  --font-display: "Noto Serif SC", "SimSun", serif;
+  --font-body: "Inter", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* === Spacing === */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* === Radius === */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* === Shadow === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--color-background);
+    --color-foreground: var(--color-foreground);
+    --color-card: var(--color-card);
+    --color-primary: var(--color-primary);
+    --color-secondary: var(--color-secondary);
+    --color-muted: var(--color-muted);
+    --color-accent: var(--color-accent);
+    --color-border: var(--color-border);
+    --radius-sm: var(--color-radius-sm);
+    --radius-md: var(--color-radius-md);
+    --radius-lg: var(--color-radius-lg);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--color-background); }
+      .text-background { color: var(--color-background); }
+      .border-background { border-color: var(--color-background); }
+      .ring-background { --tw-ring-color: var(--color-background); }
+      .bg-foreground { background-color: var(--color-foreground); }
+      .text-foreground { color: var(--color-foreground); }
+      .border-foreground { border-color: var(--color-foreground); }
+      .ring-foreground { --tw-ring-color: var(--color-foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-secondary { background-color: var(--color-secondary); }
+      .text-secondary { color: var(--color-secondary); }
+      .border-secondary { border-color: var(--color-secondary); }
+      .ring-secondary { --tw-ring-color: var(--color-secondary); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-accent { background-color: var(--color-accent); }
+      .text-accent { color: var(--color-accent); }
+      .border-accent { border-color: var(--color-accent); }
+      .ring-accent { --tw-ring-color: var(--color-accent); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body>
+  <!-- 主容器 -->
+  <div style="max-width: 1440px; margin: 0 auto; padding: 1.5rem;">
+
+    <!-- 页面标题 -->
+    <header style="margin-bottom: 1.5rem;">
+      <h1 style="font-family: var(--font-display); font-size: var(--text-3xl); color: var(--color-moon-white); margin: 0 0 0.25rem 0;">
+        MoonSpace 美术资源审查
+      </h1>
+      <p style="font-size: var(--text-sm); color: var(--color-text-muted); margin: 0;">
+        月之隙 / 场景美术资源
+      </p>
+    </header>
+
+    <!-- 顶部导航栏 -->
+    <nav style="display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap;">
+      <a class="nav-tab" data-dom-id="nav-overview" href="asset-overview.html">资源总览</a>
+      <a class="nav-tab" data-dom-id="nav-characters" href="characters.html">角色资源</a>
+      <a class="nav-tab active" href="environments.html">场景资源</a>
+      <a class="nav-tab" data-dom-id="nav-cg" href="cg-endings.html">CG 与结局</a>
+      <a class="nav-tab" href="cg-scene-comparison.html">CG 对比</a>
+
+    </nav>
+
+    <!-- ============================================ -->
+    <!-- 大背景场景区 -->
+    <!-- ============================================ -->
+    <h2 class="section-title">大背景场景</h2>
+    <p class="section-subtitle">游戏核心场景的大型背景图，定义月宫世界的整体氛围</p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;">
+
+      <!-- 月宫前院背景 -->
+      <div class="scene-card">
+        <div class="image-stage large-image-stage">
+          <img src="../../assets/sprites/moonspace/backgrounds/courtyard_expanded_closed.png" alt="月宫庭院关门运行时背景">
+        </div>
+        <h3 class="scene-title">月宫庭院（关门 / 运行时）</h3>
+        <p class="scene-desc">当前正式 expanded 庭院底图（960×640）。旧 <span style="color: #e8a0a0;">courtyard-bg-large.png（STALE）</span> 不作为宫门依据。</p>
+      </div>
+
+      <!-- 广寒宫内殿 -->
+      <div class="scene-card">
+        <div class="image-stage large-image-stage">
+          <img src="../../assets/sprites/moonspace/backgrounds/guanghan_hall_curtain.png" alt="广寒宫内殿运行时背景">
+        </div>
+        <h3 class="scene-title">广寒宫内殿（可行走运行时）</h3>
+        <p class="scene-desc">当前唯一可行走的帷幕底图（960×720）；正面王座图只作为 CG 构图候选。</p>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 开场 CG 分镜区 -->
+    <!-- ============================================ -->
+    <h2 class="section-title">开场 CG 分镜</h2>
+    <p class="section-subtitle">游戏开场过场动画的逐帧分镜画面</p>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem;">
+
+      <!-- 月光 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../assets/opening-cg-moonlight.png" alt="开场：月光">
+        </div>
+        <h3 class="scene-title">月光</h3>
+        <p class="scene-desc">开场：血月升起</p>
+      </div>
+
+      <!-- 血月 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../assets/opening-cg-blood-moon.png" alt="开场：血月">
+        </div>
+        <h3 class="scene-title">血月</h3>
+        <p class="scene-desc">开场：血月高悬</p>
+      </div>
+
+      <!-- 房间 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../assets/opening-cg-room.png" alt="开场：房间">
+        </div>
+        <h3 class="scene-title">房间</h3>
+        <p class="scene-desc">开场：电脑屏幕</p>
+      </div>
+
+      <!-- 黑屏 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../assets/opening-cg-blackout.png" alt="开场：黑屏">
+        </div>
+        <h3 class="scene-title">黑屏</h3>
+        <p class="scene-desc">开场：穿越黑屏</p>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 前院物体区 -->
+    <!-- ============================================ -->
+    <h2 class="section-title">前院物体</h2>
+    <p class="section-subtitle">月宫前院中可交互的场景物体与环境组件</p>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;">
+
+      <!-- 月桂树 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../assets/laurel-tree.png" alt="月桂树">
+        </div>
+        <h3 class="scene-title">月桂树</h3>
+        <p class="scene-desc">规则核心、活体树、树干人脸、流血状态</p>
+      </div>
+
+      <!-- 月池 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../../assets/sprites/moonspace/moon_pool_large.png" alt="月池运行时正式图">
+        </div>
+        <h3 class="scene-title">月池</h3>
+        <p class="scene-desc">运行时正式 144×144 圆池，中心由 <code>MoonPool(480,300)</code> 注入。旧 <span style="color: #e8a0a0;">moon_pool.png（STALE fallback）</span> 不作为正式画面依据。</p>
+      </div>
+
+      <!-- 宫墙背景 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../../assets/sprites/moonspace/backgrounds/courtyard_expanded_closed.png" alt="宫门关闭运行时背景">
+        </div>
+        <h3 class="scene-title">宫门状态（expanded 关门）</h3>
+        <p class="scene-desc">正式宫门锚点来自 expanded closed/open 两态。旧 <span style="color: #e8a0a0;">palace-wall-bg.png（STALE fallback）</span> 不作基准。</p>
+      </div>
+
+      <!-- 月谷教程背景 -->
+      <div class="scene-card">
+        <div class="image-stage">
+          <img src="../assets/home-tutorial-bg.png" alt="月谷教程背景">
+        </div>
+        <h3 class="scene-title">月谷教程背景</h3>
+        <p class="scene-desc">起点场景背景</p>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- UI/过渡画面区 -->
+    <!-- ============================================ -->
+    <h2 class="section-title">UI / 过渡画面</h2>
+    <p class="section-subtitle">系统级界面背景与场景切换过渡画面</p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;">
+
+      <!-- 主菜单背景 -->
+      <div class="scene-card">
+        <div class="image-stage large-image-stage">
+          <img src="../assets/main-menu-bg.png" alt="主菜单背景">
+        </div>
+        <h3 class="scene-title">主菜单背景</h3>
+        <p class="scene-desc">游戏启动后的主菜单界面背景</p>
+      </div>
+
+      <!-- 场景切换画面 -->
+      <div class="scene-card">
+        <div class="image-stage large-image-stage">
+          <img src="../assets/scene-transition.png" alt="场景切换画面">
+        </div>
+        <h3 class="scene-title">场景切换画面</h3>
+        <p class="scene-desc">场景之间的过渡过渡动画帧</p>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 设计方向备注区 -->
+    <!-- ============================================ -->
+    <h2 class="section-title">设计方向备注</h2>
+    <div class="note-panel">
+      <p>待确认项目：前院宫门/水池正式美术（v9 候选在 tmp/art-approval-v9-cg-aligned/ 等待确认）</p>
+      <p>当前前院入口使用临时低干扰标记，月池仍使用原版加深反馈</p>
+    </div>
+
+  </div>
+
+    <style>
+    /* 页面基础样式 */
+    body {
+      background-color: var(--color-deep-blue-black);
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* 导航栏样式 */
+    .nav-tab {
+      padding: 0.625rem 1.25rem;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      background: transparent;
+    }
+    .nav-tab:hover {
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-card);
+      border-color: var(--color-border);
+    }
+    .nav-tab.active {
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-card);
+      border-color: var(--color-accent);
+      box-shadow: 0 0 8px rgba(139, 32, 48, 0.3);
+    }
+
+    /* 场景卡片样式 */
+    .scene-card {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .scene-card:hover {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 16px rgba(139, 32, 48, 0.15);
+    }
+
+    /* 图片展示区域 */
+    .image-stage {
+      background-color: var(--color-deep-blue-black);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-stage img {
+      image-rendering: pixelated;
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* 大图卡片 - 限制高度完整展示 */
+    .large-image-stage {
+      max-height: 480px;
+    }
+    .large-image-stage img {
+      max-height: 480px;
+      object-fit: contain;
+    }
+
+    /* 场景名称标题 */
+    .scene-title {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      color: var(--color-moon-white);
+      margin: 0.75rem 0 0.25rem 0;
+    }
+
+    /* 场景描述 */
+    .scene-desc {
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin: 0;
+    }
+
+    /* 区域标题 */
+    .section-title {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      color: var(--color-moon-white);
+      margin: 2.5rem 0 0.5rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .section-subtitle {
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+      margin: 0 0 1.25rem 0;
+    }
+
+    /* 备注面板 */
+    .note-panel {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-left: 3px solid var(--color-accent);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      margin-top: 2rem;
+    }
+    .note-panel p {
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+      line-height: var(--leading-relaxed);
+      margin: 0.5rem 0;
+    }
+    .note-panel p:first-child {
+      margin-top: 0;
+    }
+    .note-panel p:last-child {
+      margin-bottom: 0;
+    }
+  </style>
+</body>
+</html>

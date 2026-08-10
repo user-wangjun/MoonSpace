@@ -3,7 +3,7 @@
 import pygame
 
 import config
-from utils.assets import clear_asset_cache, load_image, load_sprite_grid, load_sprite_sheet
+from utils.assets import clear_asset_cache, load_image, load_sprite_grid
 
 
 def test_load_image_returns_cached_alpha_surface():
@@ -15,15 +15,6 @@ def test_load_image_returns_cached_alpha_surface():
     assert first is second
     assert first.get_flags() & pygame.SRCALPHA
     assert first.get_size() == (176, 220)
-
-
-def test_load_sprite_sheet_slices_player_frames():
-    clear_asset_cache()
-
-    frames = load_sprite_sheet("sprites/moonspace/player_envoy.png", 16, 24)
-
-    assert len(frames) == 8
-    assert {frame.get_size() for frame in frames} == {(16, 24)}
 
 
 def test_load_sprite_grid_slices_large_player_frames():
@@ -41,12 +32,10 @@ def test_scene_background_assets_match_game_surface():
 
     menu = load_image("sprites/moonspace/main_menu_bg.png")
     transition = load_image("sprites/moonspace/scene_transition_screen.png")
-    found_face = load_image("sprites/moonspace/transition_found_you_face.png")
     courtyard = load_image("sprites/moonspace/courtyard_bg_large.png")
 
     assert menu.get_size() == (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
     assert transition.get_size() == (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
-    assert found_face.get_size() == (92, 112)
     assert courtyard.get_size() == (config.MAP_WIDTH, config.MAP_HEIGHT)
 
 
@@ -163,18 +152,86 @@ def test_confirmed_mainline_visual_resources_load():
         "sprites/moonspace/backgrounds/courtyard_expanded_open.png",
         "sprites/moonspace/home_tutorial_bg_open.png",
         "sprites/moonspace/props/broken_jade_slip.png",
+        "sprites/moonspace/ui/jade_register_volume_1.png",
+        "sprites/moonspace/ui/jade_register_volume_2.png",
+        "sprites/moonspace/ui/jade_register_volume_3.png",
         "sprites/moonspace/cg/report_staging.png",
         "sprites/moonspace/cg/he_earth_return.png",
         "sprites/moonspace/cg/be_wugang_pollution.png",
         "sprites/moonspace/cg/be_yutu_pollution.png",
         "sprites/moonspace/cg/be_double_pollution.png",
         "sprites/moonspace/cg/be_wait_trap.png",
+        "sprites/moonspace/cg/opening_01_download_start.png",
+        "sprites/moonspace/cg/opening_02_download_finish.png",
+        "sprites/moonspace/cg/opening_03_turn_to_window.png",
+        "sprites/moonspace/cg/opening_04_blood_moon_emerges.png",
+        "sprites/moonspace/cg/opening_05_blood_moon_full.png",
+        "sprites/moonspace/cg/opening_06_moonlight_corrupts_screen.png",
+        "sprites/moonspace/cg/opening_07_screen_shatters.png",
+        "sprites/moonspace/cg/opening_08_blackout_crescent.png",
+        "sprites/moonspace/cg/report_01_enter_hall.png",
+        "sprites/moonspace/cg/report_02_walk_forward.png",
+        "sprites/moonspace/cg/report_03_stop_before_chang_e.png",
+        "sprites/moonspace/cg/report_04_formal_bow.png",
+        "sprites/moonspace/cg/report_05_present_records.png",
+        "sprites/moonspace/cg/report_06_chang_e_receives_records.png",
+        "sprites/moonspace/cg/report_07_records_on_desk.png",
+        "sprites/moonspace/cg/he_02_depart_moon_palace.png",
+        "sprites/moonspace/cg/he_03_earth_arrival.png",
+        "sprites/moonspace/cg/be_wugang_01_pool_axe_reflection.png",
+        "sprites/moonspace/cg/be_wugang_02_roots_claim_envoy.png",
+        "sprites/moonspace/cg/be_wugang_03_new_lumberjack.png",
+        "sprites/moonspace/cg/be_yutu_01_rabbit_shadow.png",
+        "sprites/moonspace/cg/be_yutu_02_mortar_awakens.png",
+        "sprites/moonspace/cg/be_yutu_03_new_medicine_maker.png",
+        "sprites/moonspace/cg/be_double_01_records_overlap.png",
+        "sprites/moonspace/cg/be_double_02_roots_converge.png",
+        "sprites/moonspace/cg/be_double_03_bleeding_tree_face.png",
+        "sprites/moonspace/cg/be_change_01_empty_hall.png",
+        "sprites/moonspace/cg/be_change_02_chang_e_closes_path.png",
+        "sprites/moonspace/cg/be_change_03_left_under_moonlight.png",
+        "sprites/moonspace/cg/death_violation_01_reflection.png",
+        "sprites/moonspace/cg/death_violation_02_pool_spreads.png",
+        "sprites/moonspace/cg/death_violation_03_pool_pull.png",
+        "sprites/moonspace/yutu_body_4x4.png",
+        "sprites/moonspace/yutu_pestle_overlay_4x4.png",
+        "sprites/moonspace/yutu_pestle_overlay.png",
+        "sprites/moonspace/props/yutu_mortar.png",
     ]
 
     for path in resource_paths:
         image = load_image(path)
         assert image.get_width() > 0
         assert image.get_height() > 0
+
+
+def test_yutu_runtime_layers_have_transparent_contract_and_no_green_screen():
+    body = load_image("sprites/moonspace/yutu_body_4x4.png")
+    overlay = load_image("sprites/moonspace/yutu_pestle_overlay_4x4.png")
+    mortar = load_image("sprites/moonspace/props/yutu_mortar.png")
+
+    assert body.get_size() == (256, 312)
+    assert overlay.get_size() == (256, 312)
+    assert mortar.get_size() == (48, 32)
+    assert all(image.get_at((0, 0)).a == 0 for image in (body, overlay, mortar))
+
+    for image in (body, overlay, mortar):
+        green_pixels = sum(
+            1
+            for y in range(0, image.get_height(), 2)
+            for x in range(0, image.get_width(), 2)
+            if (color := image.get_at((x, y))).a > 8
+            and color.g > 120
+            and color.g > color.r + 40
+            and color.g > color.b + 40
+        )
+        assert green_pixels == 0
+
+
+def test_jade_register_ui_backgrounds_match_the_game_surface():
+    for page in range(1, 4):
+        image = load_image(f"sprites/moonspace/ui/jade_register_volume_{page}.png")
+        assert image.get_size() == (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
 
 
 def test_confirmed_expanded_scene_backgrounds_match_scene_world_sizes():

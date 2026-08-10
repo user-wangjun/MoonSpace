@@ -72,6 +72,7 @@ class SaveManager:
         for key in ("home_tutorial", "mainline", "player", "known_rules", "laurel_tree", "wugang", "yutu"):
             if key in data and not isinstance(data[key], dict):
                 raise CorruptSaveError(f"save slot {slot_id} has invalid {key}")
+        data = self._migrate_payload(data)
         self._validate_payload(slot_id, data)
         return data
 
@@ -122,6 +123,7 @@ class SaveManager:
                 "report_completed": False,
                 "return_countdown_active": False,
                 "return_countdown_remaining": 0.0,
+                "return_departed_on_time": False,
                 "pending_pool_ending": "",
                 "ending": "",
                 "broken_jade_obtained": False,
@@ -185,6 +187,7 @@ class SaveManager:
             "yutu_polluted",
             "report_completed",
             "return_countdown_active",
+            "return_departed_on_time",
             "broken_jade_obtained",
         ):
             if key in mainline and not isinstance(mainline[key], bool):
@@ -197,7 +200,7 @@ class SaveManager:
         if "name" in envoy_register and not isinstance(envoy_register["name"], str):
             raise CorruptSaveError(f"save slot {slot_id} has invalid envoy_register.name")
         name = envoy_register.get("name", "")
-        if len(name) > 12 or (envoy_register.get("registered", False) and not name):
+        if len(name) > 4:
             raise CorruptSaveError(f"save slot {slot_id} has inconsistent envoy_register")
         countdown = mainline.get("return_countdown_remaining", 0.0)
         if (
@@ -220,6 +223,70 @@ class SaveManager:
         yutu = data.get("yutu", {})
         if "is_pounding" in yutu and not isinstance(yutu["is_pounding"], bool):
             raise CorruptSaveError(f"save slot {slot_id} has invalid yutu.is_pounding")
+
+    @staticmethod
+    def _migrate_payload(data: dict[str, Any]) -> dict[str, Any]:
+        """把早期平铺来使字段和倒计时字段迁移到当前存档结构。"""
+        migrated = dict(data)
+
+        envoy_register = migrated.get("envoy_register")
+        if not isinstance(envoy_register, dict):
+            envoy_register = {}
+        if "registered" not in envoy_register and "envoy_registered" in migrated:
+            envoy_register["registered"] = migrated["envoy_registered"]
+        if "name" not in envoy_register and "envoy_name" in migrated:
+            legacy_name = migrated["envoy_name"]
+            # 旧版允许更长的姓名；新流程不再收集姓名，但已有平铺值仍需可载入。
+            envoy_register["name"] = legacy_name[:4] if isinstance(legacy_name, str) else legacy_name
+        migrated["envoy_register"] = envoy_register
+
+        mainline = migrated.get("mainline")
+        if mainline is None:
+            mainline = {}
+        elif not isinstance(mainline, dict):
+            return migrated
+        for key in (
+            "report_completed",
+            "return_countdown_active",
+            "return_departed_on_time",
+            "pending_pool_ending",
+            "ending",
+        ):
+            if key not in mainline and key in migrated:
+                mainline[key] = migrated[key]
+        if "return_countdown_remaining" not in mainline:
+            if "return_countdown" in mainline:
+                mainline["return_countdown_remaining"] = mainline["return_countdown"]
+            elif "return_countdown" in migrated:
+                mainline["return_countdown_remaining"] = migrated["return_countdown"]
+        mainline.setdefault("return_countdown_remaining", 0.0)
+        if "return_countdown_active" not in mainline:
+            remaining = mainline["return_countdown_remaining"]
+            mainline["return_countdown_active"] = bool(
+                mainline.get("report_completed") and isinstance(remaining, (int, float)) and remaining > 0
+            )
+        if "return_departed_on_time" not in mainline:
+            mainline["return_departed_on_time"] = bool(
+                migrated.get("return_to_moon_valley_before_timer", False)
+            )
+        if (
+            migrated.get("scene") in ("home", "playing")
+            and mainline.get("report_completed")
+            and mainline.get("return_countdown_active")
+            and not mainline.get("pending_pool_ending")
+        ):
+            mainline["return_departed_on_time"] = True
+        if mainline.get("return_departed_on_time"):
+            mainline["return_countdown_active"] = False
+            mainline["return_countdown_remaining"] = 0.0
+
+        # 旧版本双污染结局 ID 的兼容迁移；新存档统一使用 be_double。
+        for key in ("pending_pool_ending", "ending"):
+            if mainline.get(key) == "be_laurel_mixed":
+                mainline[key] = "be_double"
+
+        migrated["mainline"] = mainline
+        return migrated
 
 
 def default_save_dir() -> Path:

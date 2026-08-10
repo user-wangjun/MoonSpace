@@ -204,6 +204,25 @@ def test_moon_pool_table_and_sign_use_png_assets():
     assert len(colors) > 50
 
 
+def test_pound_table_keeps_collision_anchor_but_draws_split_mortar_layers():
+    table = PoundTable(740, 302)
+    surface = pygame.Surface((config.MAP_WIDTH, config.MAP_HEIGHT), pygame.SRCALPHA)
+
+    table.draw_back(surface)
+    surface.fill((255, 0, 0, 255), pygame.Rect(table.rect.centerx - 20, table.rect.centery + 2, 40, 16))
+    before_front = surface.copy()
+    table.draw_front(surface)
+
+    assert table.get_collision_rect().topleft == (740, 302)
+    changed = sum(
+        before_front.get_at((x, y)) != surface.get_at((x, y))
+        for x in range(table.rect.centerx - 24, table.rect.centerx + 24)
+        for y in range(table.rect.centery + 2, table.rect.centery + 18)
+        if 0 <= x < surface.get_width() and 0 <= y < surface.get_height()
+    )
+    assert changed > 0
+
+
 def test_palace_wall_draw_contains_moonlight_and_blood_moon_accents():
     wall = PalaceWall()
     wall.set_horror_level(3)
@@ -310,6 +329,31 @@ def test_moon_pool_draws_real_sprite_reflection_without_touching_stone_rim():
         (pool.visual_rect.right - 6, pool.visual_rect.centery),
     ]
     assert all(before.get_at(point) == after.get_at(point) for point in rim_points)
+
+
+def test_moon_pool_pollution_is_an_inner_overlay_without_changing_geometry():
+    pool = MoonPool()
+    normal = pygame.Surface((config.MAP_WIDTH, config.MAP_HEIGHT), pygame.SRCALPHA)
+    polluted = pygame.Surface((config.MAP_WIDTH, config.MAP_HEIGHT), pygame.SRCALPHA)
+
+    pool.draw(normal)
+    pool.draw(polluted, show_pollution=True)
+
+    assert pool.visual_rect.center == pool.rect.center
+    changed = sum(
+        normal.get_at((x, y)) != polluted.get_at((x, y))
+        for y in range(pool.visual_rect.top + 12, pool.visual_rect.bottom - 12)
+        for x in range(pool.visual_rect.left + 12, pool.visual_rect.right - 12)
+    )
+    assert changed > 100
+
+    rim_points = (
+        (pool.visual_rect.centerx, pool.visual_rect.top + 5),
+        (pool.visual_rect.centerx, pool.visual_rect.bottom - 6),
+        (pool.visual_rect.left + 5, pool.visual_rect.centery),
+        (pool.visual_rect.right - 6, pool.visual_rect.centery),
+    )
+    assert all(normal.get_at(point) == polluted.get_at(point) for point in rim_points)
 
 
 def test_moon_pool_violation_reflection_adds_red_eyes():

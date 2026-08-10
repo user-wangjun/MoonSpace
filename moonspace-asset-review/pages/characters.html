@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色资源 - MoonSpace 美术资源审查</title>
+    <style id="theme-vars">
+:root {
+  /* === MoonSpace Color System === */
+  --color-primary: #c8d8e8;
+  --color-primary-dark: #8a9bb0;
+  --color-primary-light: #e8eef5;
+
+  --color-secondary: #2a3040;
+  --color-secondary-dark: #1a1e2a;
+  --color-secondary-light: #3a4050;
+
+  --color-accent: #8b2030;
+  --color-accent-dark: #5a1018;
+  --color-accent-light: #b83050;
+
+  --color-moon-white: #e0e8f0;
+  --color-cold-gray: #607080;
+  --color-deep-blue-black: #0c1018;
+  --color-horror-red: #a02020;
+  --color-wood-brown: #4a3828;
+  --color-tree-green: #2a4830;
+
+  --color-bg-dark: #0c1018;
+  --color-bg-surface: #1a1e2a;
+  --color-bg-card: #222838;
+  --color-bg-elevated: #2a3040;
+
+  --color-text-primary: #c8d8e8;
+  --color-text-secondary: #8a9bb0;
+  --color-text-muted: #607080;
+  --color-text-accent: #e8c0a0;
+
+  --color-border: #2a3040;
+  --color-border-subtle: #1e2230;
+
+  /* === Semantic Aliases (required by fill-html-head.mjs) === */
+  --color-background: #0c1018;
+  --color-foreground: #c8d8e8;
+  --color-card: #222838;
+  --color-muted: #607080;
+  --color-border-border: #2a3040;
+  --color-radius-sm: 2px;
+  --color-radius-md: 4px;
+  --color-radius-lg: 8px;
+
+  /* === Typography === */
+  --font-display: "Noto Serif SC", "SimSun", serif;
+  --font-body: "Inter", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* === Spacing === */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* === Radius === */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* === Shadow === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--color-background);
+    --color-foreground: var(--color-foreground);
+    --color-card: var(--color-card);
+    --color-primary: var(--color-primary);
+    --color-secondary: var(--color-secondary);
+    --color-muted: var(--color-muted);
+    --color-accent: var(--color-accent);
+    --color-border: var(--color-border);
+    --radius-sm: var(--color-radius-sm);
+    --radius-md: var(--color-radius-md);
+    --radius-lg: var(--color-radius-lg);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--color-background); }
+      .text-background { color: var(--color-background); }
+      .border-background { border-color: var(--color-background); }
+      .ring-background { --tw-ring-color: var(--color-background); }
+      .bg-foreground { background-color: var(--color-foreground); }
+      .text-foreground { color: var(--color-foreground); }
+      .border-foreground { border-color: var(--color-foreground); }
+      .ring-foreground { --tw-ring-color: var(--color-foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-secondary { background-color: var(--color-secondary); }
+      .text-secondary { color: var(--color-secondary); }
+      .border-secondary { border-color: var(--color-secondary); }
+      .ring-secondary { --tw-ring-color: var(--color-secondary); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-accent { background-color: var(--color-accent); }
+      .text-accent { color: var(--color-accent); }
+      .border-accent { border-color: var(--color-accent); }
+      .ring-accent { --tw-ring-color: var(--color-accent); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body>
+  <!-- 主容器 -->
+  <div style="max-width: 1440px; margin: 0 auto; padding: 1.5rem;">
+
+    <!-- 页面标题 -->
+    <header style="margin-bottom: 1.5rem;">
+      <h1 style="font-family: var(--font-display); font-size: var(--text-3xl); color: var(--color-moon-white); margin: 0 0 0.25rem 0;">
+        MoonSpace 美术资源审查
+      </h1>
+      <p style="font-size: var(--text-sm); color: var(--color-text-muted); margin: 0;">
+        月之隙 / 角色精灵与对话头像
+      </p>
+    </header>
+
+    <!-- 顶部导航栏 -->
+    <nav style="display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap;">
+      <a class="nav-tab" data-dom-id="nav-overview" href="asset-overview.html">资源总览</a>
+      <a class="nav-tab active" href="characters.html">角色资源</a>
+      <a class="nav-tab" data-dom-id="nav-environments" href="environments.html">场景资源</a>
+      <a class="nav-tab" data-dom-id="nav-cg" href="cg-endings.html">CG 与结局</a>
+      <a class="nav-tab" href="cg-scene-comparison.html">CG 对比</a>
+
+    </nav>
+
+    <!-- ============================================ -->
+    <!-- 角色 1: 玩家 / 凌霄宫使者伪装者 -->
+    <!-- ============================================ -->
+    <div class="character-card" style="margin-bottom: 1.5rem;">
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+        <!-- 左侧：大精灵图 -->
+        <div style="flex: 1; min-width: 300px;">
+          <div class="sprite-stage" style="height: 280px;">
+            <img src="../assets/player-envoy-large.png" alt="玩家大精灵图" style="max-width: 100%; max-height: 100%;">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+            <span style="font-size: var(--text-xs); color: #9ed6b0;">player-envoy-large.png · CG 对齐正式运行资源 / 已接入</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <span class="spec-tag">4x4 帧表</span>
+              <span class="spec-tag">168x248px</span>
+              <span class="spec-tag">16帧 4方向</span>
+            </div>
+          </div>
+        </div>
+        <!-- 右侧：身份信息 -->
+        <div style="flex: 1; min-width: 280px;">
+          <p style="margin: 0 0 1rem 0; font-size: var(--text-xs); color: #e8a0a0;">旧 16×24 小精灵已清理；缺图时使用程序化回退。</p>
+          <h2 class="char-title">玩家</h2>
+          <p class="char-alias">凌霄宫使者伪装者</p>
+          <p class="char-desc">
+            玩家是误入月宫的现代人，伪装成凌霄宫使者。当前大精灵已统一为年轻清瘦、无胡须、黑发髻、深靛交领长袍的 CG 对齐身份；旧 16×24 小图已清理，不作为正式视觉基准。
+          </p>
+          <div style="margin-top: 0.75rem;">
+            <span class="spec-tag">大版 42x62/帧 · 程序化缺图回退</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主角重制母版：已获用户确认并接入运行时 -->
+    <div class="character-card" style="margin-bottom: 1.5rem; border-color: #5b8d6a;">
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;">
+        <div style="flex: 1; min-width: 320px;">
+          <div class="sprite-stage" style="height: 340px; background: #0c1018;">
+            <img src="../assets/candidates/imagegen/candidate_player_envoy_cg_aligned.png" alt="与 CG 对齐的主角重制候选" style="max-width: 100%; max-height: 100%;">
+          </div>
+        </div>
+        <div style="flex: 1; min-width: 280px;">
+          <h2 class="char-title">主角重制母版 · CG 对齐 / 已接入</h2>
+          <p class="char-alias">年轻清瘦 / 无冠帽无胡须 / 黑发髻 / 深靛交领长袍</p>
+          <p class="char-desc">这是 imagegen 去绿幕后保留真实 Alpha 的身份母版；用户已确认接入。正式运行表已按 42×62/帧制作并在庭院、广寒宫内殿的 480×270 与 960×540 真实绘制路径复核，不改变现有站位、碰撞盒或剧情。</p>
+          <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="spec-tag">1254×1254 RGBA</span>
+            <span class="spec-tag">4×4 动作/转身</span>
+            <span class="spec-tag">已批准 / 已接入</span>
+          </div>
+          <p style="margin-top: 0.75rem; font-size: var(--text-xs); color: var(--color-text-muted);">详见：<a href="../assets/candidates/contact-sheets/baseline-board-01-protagonist.png">B01 中文接入基准板</a> · <a href="../assets/candidates/contact-sheets/runtime-player-cg-aligned-courtyard-960.png">庭院 960×540</a> · <a href="../assets/candidates/contact-sheets/runtime-player-cg-aligned-guanghan-960.png">内殿 960×540</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 角色 2: 吴刚 / 永恒伐桂者 -->
+    <!-- ============================================ -->
+    <div class="character-card" style="margin-bottom: 1.5rem;">
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+        <!-- 左侧：大精灵图 -->
+        <div style="flex: 1; min-width: 300px;">
+          <div class="sprite-stage" style="height: 380px;">
+            <img src="../assets/wugang-chop-large.png" alt="吴刚大精灵图" style="max-width: 100%; max-height: 100%;">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+            <span style="font-size: var(--text-xs); color: var(--color-text-muted);">wugang-chop-large.png</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <span class="spec-tag">4x4 帧表</span>
+              <span class="spec-tag">304x368px</span>
+            </div>
+          </div>
+        </div>
+        <!-- 右侧：对话头像 + 信息 -->
+        <div style="flex: 1; min-width: 280px;">
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 140px;">
+              <div class="sprite-stage" style="height: 120px;">
+                <img src="../assets/wugang-dialog.png" alt="吴刚对话头像" style="max-width: 100%; max-height: 100%;">
+              </div>
+              <div style="margin-top: 0.5rem;">
+                <span style="font-size: var(--text-xs); color: var(--color-text-muted);">wugang-dialog.png</span>
+              </div>
+            </div>
+          </div>
+          <p style="margin: 0.9rem 0 0 0; font-size: var(--text-xs); color: #e8a0a0;">吴刚小精灵已清理；运行时主路径使用大尺寸帧表，缺图时回退到程序绘制。</p>
+          <h2 class="char-title" style="margin-top: 1rem;">吴刚</h2>
+          <p class="char-alias">永恒伐桂者</p>
+          <p class="char-desc">
+            被困在循环中的神话囚徒。上身宽、下身稳、动作僵硬。灰白肤色、不对称肌肉纹理。斧刃月白高光。
+          </p>
+          <div style="margin-top: 0.75rem;">
+            <span class="spec-tag">大版 76x92/帧 · 小图已清理</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 角色 3: 玉兔 / 蹲伏的类人生物 -->
+    <!-- ============================================ -->
+    <div class="character-card" style="margin-bottom: 1.5rem;">
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+        <!-- 左侧：大精灵图 -->
+        <div style="flex: 1; min-width: 300px;">
+          <div class="sprite-stage" style="height: 330px;">
+            <img src="../assets/yutu-pounding-large.png" alt="玉兔大精灵图" style="max-width: 100%; max-height: 100%;">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+            <span style="font-size: var(--text-xs); color: var(--color-text-muted);">yutu-pounding-large.png</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <span class="spec-tag">4x4 帧表</span>
+              <span class="spec-tag">256x312px</span>
+            </div>
+          </div>
+        </div>
+        <!-- 右侧：对话头像 + 信息 -->
+        <div style="flex: 1; min-width: 280px;">
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 140px;">
+              <div class="sprite-stage" style="height: 120px;">
+                <img src="../assets/yutu-dialog.png" alt="玉兔对话头像" style="max-width: 100%; max-height: 100%;">
+              </div>
+              <div style="margin-top: 0.5rem;">
+                <span style="font-size: var(--text-xs); color: var(--color-text-muted);">yutu-dialog.png</span>
+              </div>
+            </div>
+          </div>
+          <p style="margin: 0.9rem 0 0 0; font-size: var(--text-xs); color: #e8a0a0;">玉兔小精灵已清理；缺图时使用程序化本体回退，杵保持透明覆盖层。</p>
+          <h2 class="char-title" style="margin-top: 1rem;">玉兔</h2>
+          <p class="char-alias">蹲伏的类人生物</p>
+          <p class="char-desc">
+            不应画成可爱的兔子，而是"被称为玉兔的东西"。苍白、灰白、1-2像素红眼、异常关节、长耳。
+          </p>
+          <div style="margin-top: 0.75rem;">
+            <span class="spec-tag">大版 64x78/帧 · 透明本体 + 杵覆盖层</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 角色 4: 嫦娥 / 运行时透明帧；旧绿幕表明确标 stale -->
+    <!-- ============================================ -->
+    <div class="character-card" style="margin-bottom: 1.5rem;">
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+        <!-- 左侧：16帧图 -->
+        <div style="flex: 1; min-width: 300px;">
+          <div class="sprite-stage" style="height: 280px;">
+            <img src="../../assets/sprites/moonspace/sheets/chang_e_16frames_transparent.png" alt="嫦娥透明16帧运行时图" style="max-width: 100%; max-height: 100%;">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+            <span style="font-size: var(--text-xs); color: var(--color-text-muted);">chang_e_16frames_transparent.png（运行时）</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <span class="spec-tag">16帧</span>
+              <span class="spec-tag">RGBA / Alpha</span>
+            </div>
+          </div>
+        </div>
+        <!-- 右侧：对话头像 + 信息 -->
+        <div style="flex: 1; min-width: 280px;">
+          <div class="sprite-stage" style="height: 140px; margin-bottom: 1rem;">
+            <img src="../assets/chang-e-dialog.png" alt="嫦娥对话头像" style="max-width: 100%; max-height: 100%;">
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <span style="font-size: var(--text-xs); color: var(--color-text-muted);">chang-e-dialog.png</span>
+            <span class="spec-tag">对话头像</span>
+          </div>
+          <h2 class="char-title">嫦娥</h2>
+          <p class="char-alias">广寒宫中的透明 16 帧角色</p>
+          <p class="char-desc">
+            当前运行时使用透明版 16 帧并缩放至 128×128。旧版 <span style="color: #e8a0a0;">chang_e_16frames.png（RGB 绿幕，STALE）</span> 仅用于历史问题追踪，不得进入正式画面。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 底部汇总 -->
+    <!-- ============================================ -->
+    <div class="summary-bar">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: var(--text-lg); color: var(--color-moon-white); margin: 0 0 0.25rem 0;">
+            角色资源汇总
+          </h3>
+          <p style="font-size: var(--text-sm); color: var(--color-text-muted); margin: 0;">
+            共 <strong style="color: var(--color-text-primary);">7</strong> 个基础角色文件
+          </p>
+        </div>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+          <span class="spec-tag" style="font-size: var(--text-sm); padding: 0.25rem 0.75rem;">
+            3 大精灵
+          </span>
+          <span class="spec-tag" style="font-size: var(--text-sm); padding: 0.25rem 0.75rem;">
+            小精灵已清理
+          </span>
+          <span class="spec-tag" style="font-size: var(--text-sm); padding: 0.25rem 0.75rem;">
+            3 对话头像
+          </span>
+          <span class="spec-tag" style="font-size: var(--text-sm); padding: 0.25rem 0.75rem;">
+            1 嫦娥帧表
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+    <style>
+    /* 页面基础样式 */
+    body {
+      background-color: var(--color-deep-blue-black);
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* 导航栏样式 */
+    .nav-tab {
+      padding: 0.625rem 1.25rem;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      background: transparent;
+    }
+    .nav-tab:hover {
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-card);
+      border-color: var(--color-border);
+    }
+    .nav-tab.active {
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-card);
+      border-color: var(--color-accent);
+      box-shadow: 0 0 8px rgba(139, 32, 48, 0.3);
+    }
+
+    /* 角色卡片样式 */
+    .character-card {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .character-card:hover {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 16px rgba(139, 32, 48, 0.15);
+    }
+
+    /* 精灵图展示区域 - 深色底让透明 PNG 清晰可见 */
+    .sprite-stage {
+      background-color: var(--color-deep-blue-black);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 像素风格图片 */
+    .sprite-stage img {
+      image-rendering: pixelated;
+    }
+
+    /* 规格标签 */
+    .spec-tag {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      background-color: var(--color-bg-elevated);
+      border: 1px solid var(--color-border-subtle);
+      padding: 0.125rem 0.5rem;
+      border-radius: 2px;
+    }
+
+    /* 角色名称标题 */
+    .char-title {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      color: var(--color-moon-white);
+      margin: 0 0 0.25rem 0;
+    }
+
+    /* 角色别名 */
+    .char-alias {
+      font-size: var(--text-sm);
+      color: var(--color-text-accent);
+      margin-bottom: 0.75rem;
+    }
+
+    /* 角色描述 */
+    .char-desc {
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+
+    /* 底部汇总栏 */
+    .summary-bar {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.5rem;
+      margin-top: 2rem;
+    }
+  </style>
+</body>
+</html>

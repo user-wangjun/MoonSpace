@@ -82,6 +82,7 @@ def test_default_save_starts_before_full_mainline(tmp_path):
         "report_completed": False,
         "return_countdown_active": False,
         "return_countdown_remaining": 0.0,
+        "return_departed_on_time": False,
         "pending_pool_ending": "",
         "ending": "",
         "broken_jade_obtained": False,
@@ -119,6 +120,7 @@ def test_delete_slot(tmp_path):
         json.dumps({"home_tutorial": {"practice_done": 1}}),
         json.dumps({"laurel_tree": {"bleeding": "yes"}}),
         json.dumps({"yutu": {"is_pounding": 1}}),
+        json.dumps({"envoy_register": {"name": "超过四个汉字", "registered": True}}),
     ),
 )
 def test_corrupt_save_is_reported_without_breaking_slot_listing(tmp_path, content):
@@ -142,3 +144,68 @@ def test_save_atomically_replaces_corrupt_slot(tmp_path):
 
     assert manager.load(1)["opening_seen"] is True
     assert not (tmp_path / "slot_1.json.tmp").exists()
+
+
+def test_legacy_flat_envoy_and_countdown_fields_migrate_on_load(tmp_path):
+    manager = SaveManager(tmp_path)
+    legacy = {
+        "slot_id": 1,
+        "saved_at": "",
+        "opening_seen": True,
+        "home_tutorial_done": True,
+        "scene": "guanghan",
+        "envoy_registered": True,
+        "envoy_name": "凌霄来使姓名",
+        "report_completed": True,
+        "return_countdown": 12.5,
+        "player": {"x": 480, "y": 456, "facing": "up"},
+        "violation_count": 0,
+        "known_rules": {},
+    }
+    (tmp_path / "slot_1.json").write_text(json.dumps(legacy), encoding="utf-8")
+
+    migrated = manager.load(1)
+
+    assert migrated["envoy_register"] == {"registered": True, "name": "凌霄来使"}
+    assert migrated["mainline"]["report_completed"] is True
+    assert migrated["mainline"]["return_countdown_active"] is True
+    assert migrated["mainline"]["return_countdown_remaining"] == 12.5
+    assert migrated["mainline"]["return_departed_on_time"] is False
+
+
+def test_legacy_countdown_in_courtyard_is_migrated_to_completed_departure(tmp_path):
+    manager = SaveManager(tmp_path)
+    legacy = manager.default_save(1)
+    legacy["scene"] = "playing"
+    legacy["mainline"].update(
+        {
+            "report_completed": True,
+            "return_countdown_active": True,
+            "return_countdown_remaining": 12.5,
+        }
+    )
+    (tmp_path / "slot_1.json").write_text(json.dumps(legacy), encoding="utf-8")
+
+    migrated = manager.load(1)
+
+    assert migrated["mainline"]["return_departed_on_time"] is True
+    assert migrated["mainline"]["return_countdown_active"] is False
+    assert migrated["mainline"]["return_countdown_remaining"] == 0.0
+
+
+def test_legacy_double_pollution_id_is_migrated_to_be_double(tmp_path):
+    manager = SaveManager(tmp_path)
+    legacy = manager.default_save(1)
+    legacy["scene"] = "playing"
+    legacy["mainline"].update(
+        {
+            "pending_pool_ending": "be_laurel_mixed",
+            "ending": "be_laurel_mixed",
+        }
+    )
+    (tmp_path / "slot_1.json").write_text(json.dumps(legacy), encoding="utf-8")
+
+    migrated = manager.load(1)
+
+    assert migrated["mainline"]["pending_pool_ending"] == "be_double"
+    assert migrated["mainline"]["ending"] == "be_double"

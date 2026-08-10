@@ -7,7 +7,7 @@ import pygame
 from core.event_bus import EventBus, TREE_BLEEDING
 from entities.npc_base import NPCBase
 from utils import palette
-from utils.assets import load_sprite_grid, load_sprite_sheet
+from utils.assets import load_sprite_grid
 from utils.pixel_art import draw_filled_rect, draw_marker_pixels
 
 
@@ -95,10 +95,7 @@ class Wugang(NPCBase):
                 sprite = rows[frame_index // self.GRID_COLS][frame_index % self.GRID_COLS]
             sprite = pygame.transform.flip(sprite, True, False)
         except (FileNotFoundError, pygame.error, ValueError):
-            try:
-                sprite = load_sprite_sheet("sprites/moonspace/wugang_chop.png", 32, 32)[frame]
-            except (FileNotFoundError, pygame.error, ValueError):
-                sprite = None
+            sprite = None
 
         if sprite is not None:
             surface.blit(sprite, (rect.centerx - sprite.get_width() // 2, rect.bottom - sprite.get_height()))

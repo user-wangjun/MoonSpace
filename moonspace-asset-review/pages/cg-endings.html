@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CG 与结局 - MoonSpace 美术资源审查</title>
+    <style id="theme-vars">
+:root {
+  /* === MoonSpace Color System === */
+  --color-primary: #c8d8e8;
+  --color-primary-dark: #8a9bb0;
+  --color-primary-light: #e8eef5;
+
+  --color-secondary: #2a3040;
+  --color-secondary-dark: #1a1e2a;
+  --color-secondary-light: #3a4050;
+
+  --color-accent: #8b2030;
+  --color-accent-dark: #5a1018;
+  --color-accent-light: #b83050;
+
+  --color-moon-white: #e0e8f0;
+  --color-cold-gray: #607080;
+  --color-deep-blue-black: #0c1018;
+  --color-horror-red: #a02020;
+  --color-wood-brown: #4a3828;
+  --color-tree-green: #2a4830;
+
+  --color-bg-dark: #0c1018;
+  --color-bg-surface: #1a1e2a;
+  --color-bg-card: #222838;
+  --color-bg-elevated: #2a3040;
+
+  --color-text-primary: #c8d8e8;
+  --color-text-secondary: #8a9bb0;
+  --color-text-muted: #607080;
+  --color-text-accent: #e8c0a0;
+
+  --color-border: #2a3040;
+  --color-border-subtle: #1e2230;
+
+  /* === Semantic Aliases (required by fill-html-head.mjs) === */
+  --color-background: #0c1018;
+  --color-foreground: #c8d8e8;
+  --color-card: #222838;
+  --color-muted: #607080;
+  --color-border-border: #2a3040;
+  --color-radius-sm: 2px;
+  --color-radius-md: 4px;
+  --color-radius-lg: 8px;
+
+  /* === Typography === */
+  --font-display: "Noto Serif SC", "SimSun", serif;
+  --font-body: "Inter", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-4xl: 2.5rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* === Spacing === */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* === Radius === */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+
+  /* === Shadow === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--color-background);
+    --color-foreground: var(--color-foreground);
+    --color-card: var(--color-card);
+    --color-primary: var(--color-primary);
+    --color-secondary: var(--color-secondary);
+    --color-muted: var(--color-muted);
+    --color-accent: var(--color-accent);
+    --color-border: var(--color-border);
+    --radius-sm: var(--color-radius-sm);
+    --radius-md: var(--color-radius-md);
+    --radius-lg: var(--color-radius-lg);
+  }
+  @layer base {
+    body { background: var(--color-background); color: var(--color-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--color-background); }
+      .text-background { color: var(--color-background); }
+      .border-background { border-color: var(--color-background); }
+      .ring-background { --tw-ring-color: var(--color-background); }
+      .bg-foreground { background-color: var(--color-foreground); }
+      .text-foreground { color: var(--color-foreground); }
+      .border-foreground { border-color: var(--color-foreground); }
+      .ring-foreground { --tw-ring-color: var(--color-foreground); }
+      .bg-card { background-color: var(--color-card); }
+      .text-card { color: var(--color-card); }
+      .border-card { border-color: var(--color-card); }
+      .ring-card { --tw-ring-color: var(--color-card); }
+      .bg-primary { background-color: var(--color-primary); }
+      .text-primary { color: var(--color-primary); }
+      .border-primary { border-color: var(--color-primary); }
+      .ring-primary { --tw-ring-color: var(--color-primary); }
+      .bg-secondary { background-color: var(--color-secondary); }
+      .text-secondary { color: var(--color-secondary); }
+      .border-secondary { border-color: var(--color-secondary); }
+      .ring-secondary { --tw-ring-color: var(--color-secondary); }
+      .bg-muted { background-color: var(--color-muted); }
+      .text-muted { color: var(--color-muted); }
+      .border-muted { border-color: var(--color-muted); }
+      .ring-muted { --tw-ring-color: var(--color-muted); }
+      .bg-accent { background-color: var(--color-accent); }
+      .text-accent { color: var(--color-accent); }
+      .border-accent { border-color: var(--color-accent); }
+      .ring-accent { --tw-ring-color: var(--color-accent); }
+      .bg-border { background-color: var(--color-border); }
+      .text-border { color: var(--color-border); }
+      .border-border { border-color: var(--color-border); }
+      .ring-border { --tw-ring-color: var(--color-border); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body>
+  <!-- 主容器 -->
+  <div style="max-width: 1440px; margin: 0 auto; padding: 0 2rem;">
+
+    <!-- 顶部导航栏 -->
+    <nav style="display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 0; border-bottom: 1px solid var(--color-border);">
+      <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary); letter-spacing: 0.05em;">
+        MoonSpace <span style="color: var(--color-text-muted); font-size: var(--text-sm); font-family: var(--font-body);">美术资源审查</span>
+      </span>
+      <div style="display: flex; gap: 0.5rem;">
+        <a href="asset-overview.html" class="nav-tab" data-dom-id="nav-overview">资源总览</a>
+        <a href="characters.html" class="nav-tab" data-dom-id="nav-characters">角色资源</a>
+        <a href="environments.html" class="nav-tab" data-dom-id="nav-environments">场景资源</a>
+        <a href="cg-endings.html" class="nav-tab active">CG 与结局</a>
+        <a href="cg-scene-comparison.html" class="nav-tab">CG 对比</a>
+
+      </div>
+    </nav>
+
+    <!-- 页面标题 -->
+    <header style="padding: 2.5rem 0 1.5rem 0;">
+      <h1 style="font-family: var(--font-display); font-size: var(--text-3xl); color: var(--color-text-primary); margin: 0 0 0.5rem 0;">
+        CG 过场与结局美术资源
+      </h1>
+      <p style="color: var(--color-text-secondary); font-size: var(--text-base); margin: 0;">
+        主线剧情 CG 流程时间线 / 过渡画面 / 结局分支统计
+      </p>
+    </header>
+
+    <!-- ============================================ -->
+    <!-- 主线 CG 流程时间线 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 3rem;">
+      <h2 class="section-title" style="font-family: var(--font-display); font-size: var(--text-2xl); color: var(--color-text-primary); margin: 0 0 2rem 0;">
+        主线 CG 流程时间线
+      </h2>
+
+      <div class="timeline-container">
+
+        <!-- 1. 复命过场 -->
+        <div class="timeline-node">
+          <div class="timeline-dot staging"></div>
+          <div class="cg-card">
+            <div style="padding: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary);">复命过场</span>
+                <span class="tone-tag neutral">Staging CG</span>
+              </div>
+              <div style="background: #12161e; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; text-align: center;">
+                <img src="../assets/candidates/contact-sheets/report-sequence-preview-cn.png" alt="复命七镜中文标注板"
+                     style="image-rendering: auto; max-height: 400px; width: auto; display: inline-block; border-radius: var(--radius-sm);">
+              </div>
+              <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0;">
+                进入广寒宫后的复命过场，仍播放 2.8 秒或按 E 跳过；现在按 R1～R7 依次切换正式镜头，保持原状态机和时长。
+              </p>
+              <p style="margin: 0.8rem 0 0 0;">
+                <a href="../assets/candidates/contact-sheets/report-sequence-preview-cn.png" style="color: var(--color-accent-light); font-size: var(--text-sm);">查看复命 7 镜中文标注板与正式镜头槽位 →</a>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. HE：返回地球 -->
+        <div class="timeline-node">
+          <div class="timeline-dot he"></div>
+          <div class="cg-card">
+            <div style="padding: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-moon-white);">HE：三镜正式接入</span>
+                <span class="tone-tag he">HE 过渡</span>
+                <span class="tone-tag he">月白色调</span>
+                <span class="tone-tag he">已批准·运行时接入</span>
+              </div>
+              <div style="background: #12161e; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem;">
+                <div>
+                  <img src="../assets/cg-he-earth-return.png" alt="H1 月面返程 / 遥望地球过渡镜头"
+                       style="image-rendering: auto; width: 100%; border-radius: var(--radius-sm);">
+                  <div style="color: var(--color-text-secondary); font-size: var(--text-xs); margin-top: 0.35rem;">H1 月面返程（现有过渡图）</div>
+                </div>
+                <div>
+                  <img src="../assets/candidates/imagegen/candidate_he_depart_moon_palace.png" alt="H2 离开月宫候选"
+                       style="image-rendering: auto; width: 100%; border-radius: var(--radius-sm);">
+                  <div style="color: var(--color-accent-light); font-size: var(--text-xs); margin-top: 0.35rem;">H2 离开月宫（正式）</div>
+                </div>
+                <div>
+                  <img src="../assets/candidates/imagegen/candidate_he_earth_arrival.png" alt="H3 真正抵达地球候选"
+                       style="image-rendering: auto; width: 100%; border-radius: var(--radius-sm);">
+                  <div style="color: var(--color-accent-light); font-size: var(--text-xs); margin-top: 0.35rem;">H3 真正抵达地球（正式）</div>
+                </div>
+              </div>
+              <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0;">
+                H1 仍是“月面返程 / 遥望地球”过渡镜头；H2 为离开宫门，H3 为真正抵达地球的现实房间。三镜已写入 `assets/sprites/moonspace/cg/`，并用 480×270 逻辑画面、960×540 整数 2×运行时截图复核。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. BE：吴刚污染 -->
+        <div class="timeline-node">
+          <div class="timeline-dot be"></div>
+          <div class="cg-card">
+            <div style="padding: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-accent-light);">BE：吴刚污染</span>
+                <span class="tone-tag be-warn">Bad Ending</span>
+                <span class="tone-tag be-warn">暗红/木纹色调</span>
+              </div>
+              <div style="background: #12161e; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; text-align: center;">
+                <img src="../assets/cg-be-wugang.png" alt="BE 吴刚污染"
+                     style="image-rendering: auto; max-height: 400px; width: auto; display: inline-block; border-radius: var(--radius-sm);">
+              </div>
+              <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0;">
+                玩家替斧声续记一响，月池照出已归入吴刚职司。远处吴刚斧声停止，成为新伐桂人。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. BE：玉兔污染 -->
+        <div class="timeline-node">
+          <div class="timeline-dot be"></div>
+          <div class="cg-card">
+            <div style="padding: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-accent-light);">BE：玉兔污染</span>
+                <span class="tone-tag be-warn">Bad Ending</span>
+                <span class="tone-tag be-warn">药白/苍白色调</span>
+              </div>
+              <div style="background: #12161e; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; text-align: center;">
+                <img src="../assets/cg-be-yutu.png" alt="BE 玉兔污染"
+                     style="image-rendering: auto; max-height: 400px; width: auto; display: inline-block; border-radius: var(--radius-sm);">
+              </div>
+              <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0;">
+                玩家近闻药香，月池照出已归入玉兔职司。成为新的捣药人。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. BE：双重污染 -->
+        <div class="timeline-node">
+          <div class="timeline-dot be"></div>
+          <div class="cg-card" style="border-color: rgba(139, 32, 48, 0.3);">
+            <div style="padding: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); color: #f06070;">BE：双重污染</span>
+                <span class="tone-tag be-danger">Bad Ending</span>
+                <span class="tone-tag be-danger">血红/根系色调</span>
+                <span class="tone-tag be-danger">最恐怖</span>
+              </div>
+              <div style="background: #12161e; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; text-align: center;">
+                <img src="../assets/cg-be-double.png" alt="BE 双重污染"
+                     style="image-rendering: auto; max-height: 400px; width: auto; display: inline-block; border-radius: var(--radius-sm);">
+              </div>
+              <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0;">
+                半属吴刚半属玉兔，被月桂判定为多余记录，拖走吞噬。树上多出流血面孔。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. BE：留下来等 -->
+        <div class="timeline-node">
+          <div class="timeline-dot be"></div>
+          <div class="cg-card">
+            <div style="padding: 1.25rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-accent-light);">BE：留下来等</span>
+                <span class="tone-tag be-warn">Bad Ending</span>
+                <span class="tone-tag be-warn">冷白/孤独色调</span>
+              </div>
+              <div style="background: #12161e; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 1rem; text-align: center;">
+                <img src="../assets/cg-be-wait.png" alt="BE 留下来等"
+                     style="image-rendering: auto; max-height: 400px; width: auto; display: inline-block; border-radius: var(--radius-sm);">
+              </div>
+              <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0;">
+                无污染复命后留在广寒宫等到倒计时归零。成为新的宫中影子。
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 过渡画面区 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 3rem;">
+      <h2 class="section-title" style="font-family: var(--font-display); font-size: var(--text-2xl); color: var(--color-text-primary); margin: 0 0 1.5rem 0;">
+        过渡画面
+      </h2>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
+        <!-- 场景切换画面 -->
+        <div class="transition-card">
+          <div style="padding: 1rem;">
+            <p style="font-family: var(--font-display); font-size: var(--text-lg); color: var(--color-text-primary); margin: 0 0 0.75rem 0;">
+              场景切换画面
+            </p>
+            <div style="background: #12161e; border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.75rem; text-align: center;">
+              <img src="../assets/scene-transition.png" alt="场景切换画面"
+                   style="image-rendering: auto; max-height: 300px; width: auto; display: inline-block; border-radius: var(--radius-sm);">
+            </div>
+            <p style="color: var(--color-text-muted); font-size: var(--text-sm); margin: 0;">
+              场景转换过渡
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 四个坏结局 12 镜正式接入预览 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 2.5rem;">
+      <div class="cg-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary);">四个坏结局 · 12 镜正式接入</span>
+          <span class="tone-tag be-warn">四分支 × 三镜</span>
+          <span class="tone-tag be-warn">已批准·运行时接入</span>
+        </div>
+        <img src="../assets/candidates/contact-sheets/bad-endings-sequence-preview-cn.png" alt="四个坏结局十二镜中文标注板"
+             style="image-rendering: auto; width: 100%; border-radius: var(--radius-sm);">
+        <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0.9rem 0 0 0;">
+          每行对应一个正式坏结局 ID 的三个状态变化；正式帧已裁切为 480×270 16:9 资源并接入 EndingCG。兼容的 `be_laurel_mixed` 仍复用 `be_double` 三镜，不新增结局 ID。
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- 普通违规死亡正式接入预览 -->
+    <!-- ============================================ -->
+    <section style="margin-bottom: 2.5rem;">
+      <div class="cg-card" style="padding: 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <span style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary);">普通三次违规死亡 · D1–D3 正式接入</span>
+          <span class="tone-tag be-warn">DeathScreen / death_state</span>
+          <span class="tone-tag be-warn">已批准·DeathScreen</span>
+        </div>
+        <img src="../assets/candidates/contact-sheets/death-sequence-preview-cn.png" alt="普通三次违规死亡中文标注三联预览"
+             style="image-rendering: auto; width: 100%; border-radius: var(--radius-sm);">
+        <p style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); margin: 0.9rem 0 0 0;">
+          D1/D2/D3 按 DeathScreen 的 1.5 秒淡入阶段切换；它们属于 `death_state=violation_3` 的视觉序列，不新增正式结局 ID，也不改变月池中心、碰撞或计时规则。
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- CG 统计面板 + 后续方向（双栏） -->
+    <!-- ============================================ -->
+    <section style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 4rem;">
+
+      <!-- CG 统计面板 -->
+      <div class="stats-panel" style="padding: 1.5rem;">
+        <h3 style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary); margin: 0 0 1.25rem 0;">
+          CG 统计
+        </h3>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
+          <li style="display: flex; align-items: baseline; gap: 0.75rem;">
+            <span style="color: var(--color-moon-white); font-size: var(--text-lg); font-weight: 700;">开场 8 镜</span>
+            <span style="color: var(--color-text-muted); font-size: var(--text-sm);">+</span>
+            <span style="color: var(--color-accent-light); font-size: var(--text-lg); font-weight: 700;">复命 7 镜</span>
+            <span style="color: var(--color-text-muted); font-size: var(--text-sm);">+</span>
+            <span style="color: var(--color-moon-white); font-size: var(--text-lg); font-weight: 700;">HE 3 镜</span>
+          </li>
+          <li style="display: flex; align-items: baseline; gap: 0.75rem;">
+            <span style="color: var(--color-text-secondary); font-size: var(--text-base);">坏结局 12 镜 + 普通死亡 3 镜 = 33 镜</span>
+          </li>
+          <li style="border-top: 1px solid var(--color-border); padding-top: 1rem;">
+            <span style="color: var(--color-text-muted); font-size: var(--text-sm);">
+              五个正式结局 ID 保持不变；普通死亡仍归属 DeathScreen/death_state
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 后续方向备注 -->
+      <div class="roadmap-panel" style="padding: 1.5rem;">
+        <h3 style="font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-text-primary); margin: 0 0 1.25rem 0;">
+          后续方向
+        </h3>
+        <ol style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.875rem;">
+          <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+            <span style="color: var(--color-accent); font-weight: 700; font-size: var(--text-sm); min-width: 1.5rem;">P1</span>
+            <span style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+              确认 v9 宫门/水池候选入库
+            </span>
+          </li>
+          <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+            <span style="color: var(--color-accent); font-weight: 700; font-size: var(--text-sm); min-width: 1.5rem;">P2</span>
+            <span style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+              补普通违规 3 次专属主线 CG（身份败露/月桂养料）
+            </span>
+          </li>
+          <li style="display: flex; gap: 0.75rem; align-items: flex-start;">
+            <span style="color: var(--color-accent); font-weight: 700; font-size: var(--text-sm); min-width: 1.5rem;">P3</span>
+            <span style="color: var(--color-text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed);">
+              增强广寒宫内殿人物待机动画
+            </span>
+          </li>
+        </ol>
+      </div>
+
+    </section>
+
+  </div>
+
+    <style>
+    /* 页面基础样式 */
+    body {
+      background-color: var(--color-deep-blue-black);
+      color: var(--color-text-primary);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* 导航栏样式 */
+    .nav-tab {
+      padding: 0.625rem 1.25rem;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      background: transparent;
+    }
+    .nav-tab:hover {
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-card);
+      border-color: var(--color-border);
+    }
+    .nav-tab.active {
+      color: var(--color-text-primary);
+      background-color: var(--color-bg-card);
+      border-color: var(--color-accent);
+      box-shadow: 0 0 8px rgba(139, 32, 48, 0.3);
+    }
+
+    /* 时间线布局 */
+    .timeline-container {
+      position: relative;
+      padding-left: 2.5rem;
+    }
+    .timeline-container::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--color-border), var(--color-accent), var(--color-border));
+    }
+
+    /* 时间线节点 */
+    .timeline-node {
+      position: relative;
+      margin-bottom: 2.5rem;
+    }
+    .timeline-node:last-child {
+      margin-bottom: 0;
+    }
+    .timeline-dot {
+      position: absolute;
+      left: -2.5rem;
+      top: 1.75rem;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--color-border);
+      z-index: 1;
+    }
+    .timeline-dot.he {
+      background-color: var(--color-moon-white);
+      border-color: var(--color-moon-white);
+      box-shadow: 0 0 10px rgba(224, 232, 240, 0.5);
+    }
+    .timeline-dot.be {
+      background-color: var(--color-accent);
+      border-color: var(--color-accent);
+      box-shadow: 0 0 10px rgba(139, 32, 48, 0.6);
+    }
+    .timeline-dot.staging {
+      background-color: var(--color-text-secondary);
+      border-color: var(--color-text-secondary);
+      box-shadow: 0 0 6px rgba(106, 123, 140, 0.4);
+    }
+
+    /* CG 卡片样式 */
+    .cg-card {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .cg-card:hover {
+      border-color: var(--color-bg-elevated);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* 色调标记标签 */
+    .tone-tag {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-sm);
+      font-size: var(--text-xs);
+      font-weight: 500;
+      line-height: 1.5;
+    }
+    .tone-tag.he {
+      background-color: rgba(224, 232, 240, 0.12);
+      color: var(--color-moon-white);
+      border: 1px solid rgba(224, 232, 240, 0.25);
+    }
+    .tone-tag.be-warn {
+      background-color: rgba(139, 32, 48, 0.15);
+      color: var(--color-accent-light);
+      border: 1px solid rgba(139, 32, 48, 0.35);
+    }
+    .tone-tag.be-danger {
+      background-color: rgba(139, 32, 48, 0.25);
+      color: #f06070;
+      border: 1px solid rgba(139, 32, 48, 0.5);
+    }
+    .tone-tag.neutral {
+      background-color: rgba(96, 112, 128, 0.15);
+      color: var(--color-text-secondary);
+      border: 1px solid rgba(96, 112, 128, 0.3);
+    }
+
+    /* 过渡画面卡片 */
+    .transition-card {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .transition-card:hover {
+      border-color: var(--color-bg-elevated);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* 统计面板 */
+    .stats-panel {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+    }
+
+    /* 方向备注面板 */
+    .roadmap-panel {
+      background-color: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-left: 3px solid var(--color-accent);
+      border-radius: var(--radius-md);
+    }
+
+    /* 区域标题装饰线 */
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 3rem;
+      height: 2px;
+      margin-top: 0.5rem;
+      background: var(--color-accent);
+    }
+
+    /* 滚动条美化 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--color-deep-blue-black);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--color-bg-elevated);
+      border-radius: 3px;
+    }
+  </style>
+</body>
+</html>
