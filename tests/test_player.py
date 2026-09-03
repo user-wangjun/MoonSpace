@@ -132,3 +132,18 @@ def test_player_reflection_sprite_uses_opposite_facing_for_all_directions():
         reflected = player.get_reflection_sprite()
         expected = player.get_current_sprite(reflected_facing)
         assert pygame.image.tobytes(reflected, "RGBA") == pygame.image.tobytes(expected, "RGBA")
+
+
+def test_player_walk_frames_keep_visible_size_and_foot_anchor_stable():
+    player = Player()
+    player.anim_state = "walk"
+
+    for facing in player.VALID_FACINGS:
+        player.facing = facing
+        bounds_by_frame = []
+        for frame in range(4):
+            player.current_frame = frame
+            bounds_by_frame.append(player.get_current_sprite().get_bounding_rect(min_alpha=1))
+
+        assert {bounds.height for bounds in bounds_by_frame} == {60}
+        assert {bounds.bottom for bounds in bounds_by_frame} == {62}

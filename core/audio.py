@@ -15,6 +15,60 @@ from core.event_bus import (
 from utils.assets import asset_path
 
 
+BGM_FILES = {
+    "main_menu": "audio/bgm_main_menu.wav",
+    "home": "audio/bgm_home_dream_2_ambience.mp3",
+    "guanghan_square": "audio/bgm_guanghan_square_the_surreal_truth.mp3",
+    "guanghan_palace": "audio/bgm_guanghan_palace_space_ambient.mp3",
+    "ending_he": "audio/bgm_ending_he_somnium.mp3",
+    "ending_be": "audio/bgm_ending_be_insistent.ogg",
+}
+
+MENU_MODES = ("main_menu", "save_menu")
+PLAYABLE_MODES = ("home", "playing", "guanghan")
+
+
+def select_bgm_for_state(mode: str, mainline: dict | None = None) -> str | None:
+    """Map the real game state to one BGM key without importing Game."""
+    if mode in MENU_MODES:
+        return "main_menu"
+
+    mainline = mainline or {}
+    if mode == "ending_cg":
+        ending = mainline.get("ending", "")
+        if ending == "he_return_earth":
+            return "ending_he"
+        if ending in ("be_wugang", "be_yutu", "be_double", "be_laurel_mixed", "be_change"):
+            return "ending_be"
+        return None
+
+    if mode not in PLAYABLE_MODES:
+        return None
+    if mainline.get("ending"):
+        return None
+
+    # After Chang'e has completed the handoff, the player remains under the
+    # same restrained BE/tension bed until leaving the moon palace.  A clean
+    # route changes to the HE bed only after the player reaches Moon Valley.
+    if mainline.get("handoff_completed") and mode in ("playing", "guanghan"):
+        return "ending_be"
+    if (
+        mode == "home"
+        and mainline.get("handoff_completed")
+        and mainline.get("return_departed_on_time")
+        and not mainline.get("wugang_polluted")
+        and not mainline.get("yutu_polluted")
+        and not mainline.get("pending_pool_ending")
+    ):
+        return "ending_he"
+
+    return {
+        "home": "home",
+        "playing": "guanghan_square",
+        "guanghan": "guanghan_palace",
+    }[mode]
+
+
 AUDIO_FILES = {
     "rule_discovered": "audio/rule_discovered.wav",
     "violation": "audio/violation.wav",
@@ -23,6 +77,7 @@ AUDIO_FILES = {
     "dialog_open": "audio/dialog_open.wav",
     "transition_found": "audio/transition_found.wav",
     "ambient_moon_palace": "audio/ambient_moon_palace.wav",
+    **BGM_FILES,
     # CG one-shots stay in this single audio layer so every sequence can stop
     # its temporary sounds on skip or scene change.
     "cg_download_start": "audio/cg_download_start.wav",
@@ -52,8 +107,13 @@ CG_AUDIO_KEYS = (
 
 
 class AudioManager:
-    """Small resilient audio layer; silently disables itself if mixer is unavailable."""
+    """Small resilient audio layer with one-shot, CG and scene BGM support."""
 
+    BGM_FADE_SECONDS = 0.9
+    # One reserved channel is enough because route switches fade through
+    # silence.  Keeping a single physical channel makes overlap impossible,
+    # including while sound effects are being emitted.
+    BGM_CHANNEL_IDS = (0,)
     VOLUMES = {
         "rule_discovered": 0.18,
         "violation": 0.24,
@@ -62,6 +122,14 @@ class AudioManager:
         "dialog_open": 0.12,
         "transition_found": 0.26,
         "ambient_moon_palace": 0.10,
+        # The approved title track is mastered with extra headroom so it can
+        # establish the game's tone without masking menu interaction sounds.
+        "main_menu": 0.18,
+        "home": 0.16,
+        "guanghan_square": 0.16,
+        "guanghan_palace": 0.16,
+        "ending_he": 0.18,
+        "ending_be": 0.16,
         "cg_download_start": 0.07,
         "cg_download_complete": 0.08,
         "cg_blood_moon": 0.08,
@@ -79,10 +147,18 @@ class AudioManager:
         self.mixer = mixer or pygame.mixer
         self.enabled = False
         self.sounds = {}
-        self._ambient_playing = False
+        self._ambient_playing = False  # Legacy 5-second ambient compatibility.
+        self._bgm_channels = []
+        self._bgm_slots = []
+        self._bgm_current_slot: int | None = None
+        self._bgm_target_key: str | None = None
+        self._bgm_transition: dict | None = None
+        self._dialog_active = False
+        self._cg_active = False
         self._cg_played_tokens: set[str] = set()
         self._init_mixer()
         self._load_sounds()
+        self._init_bgm_channels()
         self._subscribe()
 
     def play_transition_found(self) -> None:
@@ -90,7 +166,12 @@ class AudioManager:
         self.play("transition_found")
 
     def play_ambient(self) -> None:
-        """Start a quiet looping moon-palace bed if audio is available."""
+        """Start the legacy ambient bed for older callers and tests.
+
+        The live game uses :meth:`set_bgm` instead; keeping this method avoids
+        breaking existing integrations that still request the old 5-second
+        ambient file.
+        """
         if self._ambient_playing:
             return
         sound = self.sounds.get("ambient_moon_palace")
@@ -103,7 +184,12 @@ class AudioManager:
             self.enabled = False
 
     def stop_ambient(self) -> None:
-        """停止循环环境音，并允许下次进入场景时重新播放。"""
+        """Stop legacy ambient and every BGM immediately for reset/menu cleanup."""
+        self.stop_legacy_ambient()
+        self.stop_bgm(immediate=True)
+
+    def stop_legacy_ambient(self) -> None:
+        """Stop only the legacy ambient bed while preserving the selected BGM."""
         sound = self.sounds.get("ambient_moon_palace")
         if sound is not None:
             try:
@@ -112,9 +198,165 @@ class AudioManager:
                 self.enabled = False
         self._ambient_playing = False
 
+    def sync_for_game_state(self, mode: str, mainline: dict | None = None) -> None:
+        """Keep the live BGM aligned with the actual scene and route state."""
+        self.set_bgm(select_bgm_for_state(mode, mainline))
+
+    def set_bgm(self, key: str | None, *, fade_seconds: float | None = None) -> None:
+        """Start, fade-through-silence, or stop a named BGM without duplicate restarts."""
+        if key is not None and key not in BGM_FILES:
+            key = None
+
+        if key is not None and key not in self.sounds:
+            # A missing requested BGM must never leave a stale route playing.
+            self.stop_bgm(immediate=True)
+            self._bgm_target_key = key
+            return
+
+        if key == self._bgm_target_key:
+            return
+
+        self._bgm_target_key = key
+        duration = self.BGM_FADE_SECONDS if fade_seconds is None else max(0.0, fade_seconds)
+        if self._bgm_current_slot is None:
+            if key is None:
+                return
+            slot = 0
+            self._stop_bgm_slot(slot)
+            if not self._start_bgm_slot(slot, key):
+                self._bgm_target_key = None
+                return
+            self._bgm_current_slot = slot
+            if duration <= 0.0:
+                self._set_slot_volume(slot, self._ducked_bgm_volume(key))
+                self._bgm_transition = None
+            else:
+                self._bgm_transition = {
+                    "phase": "in",
+                    "incoming_key": key,
+                    "elapsed": 0.0,
+                    "duration": duration,
+                }
+            return
+
+        if self._bgm_transition is not None and self._bgm_transition["phase"] == "out":
+            # Keep the existing fade-out progress, but replace the pending
+            # target.  No second sound has started, so repeated route changes
+            # cannot create an overlapping stack.
+            self._bgm_transition["incoming_key"] = key
+            return
+
+        if self._bgm_transition is not None and self._bgm_transition["phase"] == "in":
+            # The currently audible track is the only active slot.  Reverse
+            # into a new fade-out before any new sound is started.
+            self._bgm_transition = {
+                "phase": "out",
+                "incoming_key": key,
+                "elapsed": 0.0,
+                "duration": duration,
+            }
+            return
+
+        if duration <= 0.0:
+            self._stop_bgm_slot(self._bgm_current_slot)
+            self._bgm_current_slot = None
+            if key is not None:
+                self.set_bgm(key, fade_seconds=0.0)
+            return
+
+        self._bgm_transition = {
+            "phase": "out",
+            "incoming_key": key,
+            "elapsed": 0.0,
+            "duration": duration,
+        }
+
+    def stop_bgm(self, *, immediate: bool = False) -> None:
+        """Stop the current BGM, optionally allowing a short fade-out."""
+        if immediate or self._bgm_current_slot is None:
+            self._bgm_target_key = None
+            self._stop_bgm_slots()
+            return
+        self._bgm_target_key = None
+        if self._bgm_transition is not None and self._bgm_transition["phase"] == "out":
+            self._bgm_transition["incoming_key"] = None
+            return
+        self._bgm_transition = {
+            "phase": "out",
+            "incoming_key": None,
+            "elapsed": 0.0,
+            "duration": self.BGM_FADE_SECONDS,
+        }
+
+    def update(self, dt: float) -> None:
+        """Advance BGM fades and apply dialogue/CG ducking."""
+        transition = self._bgm_transition
+        if transition is None:
+            if self._bgm_current_slot is not None:
+                slot = self._bgm_slots[self._bgm_current_slot]
+                if slot["key"] is not None:
+                    self._set_slot_volume(
+                        self._bgm_current_slot,
+                        self._ducked_bgm_volume(slot["key"]),
+                    )
+            return
+
+        transition["elapsed"] += max(0.0, dt)
+        duration = max(1e-6, float(transition["duration"]))
+        progress = min(1.0, transition["elapsed"] / duration)
+        duck = self._duck_multiplier()
+        current = self._bgm_current_slot
+        if current is None:
+            self._bgm_transition = None
+            return
+
+        current_key = self._bgm_slots[current]["key"]
+        if current_key is not None:
+            if transition["phase"] == "out":
+                self._set_slot_volume(current, self._base_bgm_volume(current_key) * (1.0 - progress) * duck)
+            else:
+                self._set_slot_volume(current, self._base_bgm_volume(current_key) * progress * duck)
+
+        if progress < 1.0:
+            return
+
+        if transition["phase"] == "in":
+            self._set_slot_volume(current, self._ducked_bgm_volume(current_key))
+            self._bgm_transition = None
+            return
+
+        # Fade-through-silence: stop before loading the next route.  This is
+        # intentionally sequential rather than a crossfade so two BGM files
+        # can never play together during a route change.
+        self._stop_bgm_slot(current)
+        self._bgm_current_slot = None
+        next_key = transition.get("incoming_key")
+        self._bgm_transition = None
+        if next_key is not None:
+            # The target was recorded before the fade-out began for
+            # de-duplication. Clear it before the actual start so the new
+            # single active slot is still created.
+            self._bgm_target_key = None
+            self.set_bgm(next_key, fade_seconds=duration)
+
+    def bgm_status(self) -> dict:
+        """Return observable BGM state for tests and runtime verification."""
+        active_key = None
+        if self._bgm_current_slot is not None:
+            active_key = self._bgm_slots[self._bgm_current_slot]["key"]
+        return {
+            "enabled": self.enabled,
+            "target": self._bgm_target_key,
+            "active": active_key,
+            "transitioning": self._bgm_transition is not None,
+            "loaded": tuple(key for key in BGM_FILES if key in self.sounds),
+        }
+
     def begin_cg_cycle(self) -> None:
         """Clear one-shot bookkeeping and silence any previous CG audio."""
         self.stop_cg_sounds()
+        self._cg_active = True
+        self._refresh_bgm_ducking()
 
     def play_cg_cue(self, key: str, *, token: str | None = None) -> None:
         """Play a CG cue once for a sequence boundary."""
@@ -125,7 +367,7 @@ class AudioManager:
         self.play(key)
 
     def stop_cg_sounds(self) -> None:
-        """Stop all temporary CG one-shots without affecting the ambient bed."""
+        """Stop all temporary CG one-shots without stopping the BGM."""
         for key in CG_AUDIO_KEYS:
             sound = self.sounds.get(key)
             if sound is None:
@@ -135,6 +377,8 @@ class AudioManager:
             except pygame.error:
                 self.enabled = False
         self._cg_played_tokens.clear()
+        self._cg_active = False
+        self._refresh_bgm_ducking()
 
     def play(self, key: str) -> None:
         """Play a named sound effect when available."""
@@ -153,6 +397,111 @@ class AudioManager:
             self.enabled = True
         except pygame.error:
             self.enabled = False
+
+    def _init_bgm_channels(self) -> None:
+        """Reserve one mixer channel so BGM cannot overlap regular effects."""
+        channel_factory = getattr(self.mixer, "Channel", None)
+        if not self.enabled or not callable(channel_factory):
+            self._bgm_slots = [
+                {"channel": None, "key": None, "sound": None} for _ in self.BGM_CHANNEL_IDS
+            ]
+            return
+        try:
+            reserve = getattr(self.mixer, "set_reserved", None)
+            if callable(reserve):
+                reserve(len(self.BGM_CHANNEL_IDS))
+            self._bgm_channels = [channel_factory(channel_id) for channel_id in self.BGM_CHANNEL_IDS]
+            for channel in self._bgm_channels:
+                channel.stop()
+        except pygame.error:
+            self._bgm_channels = []
+        self._bgm_slots = [
+            {
+                "channel": self._bgm_channels[index] if index < len(self._bgm_channels) else None,
+                "key": None,
+                "sound": None,
+            }
+            for index in range(len(self.BGM_CHANNEL_IDS))
+        ]
+
+    def _start_bgm_slot(self, slot_index: int, key: str) -> bool:
+        sound = self.sounds.get(key)
+        if sound is None:
+            return False
+        slot = self._bgm_slots[slot_index]
+        slot["key"] = key
+        slot["sound"] = sound
+        try:
+            channel = slot["channel"]
+            if channel is not None:
+                channel.set_volume(0.0)
+                channel.play(sound, loops=-1)
+            else:
+                sound.set_volume(0.0)
+                sound.play(loops=-1)
+        except pygame.error:
+            slot["key"] = None
+            slot["sound"] = None
+            self.enabled = False
+            return False
+        return True
+
+    def _stop_bgm_slot(self, slot_index: int) -> None:
+        if slot_index >= len(self._bgm_slots):
+            return
+        slot = self._bgm_slots[slot_index]
+        try:
+            if slot["channel"] is not None:
+                slot["channel"].stop()
+            elif slot["sound"] is not None:
+                slot["sound"].stop()
+        except pygame.error:
+            self.enabled = False
+        slot["key"] = None
+        slot["sound"] = None
+
+    def _stop_bgm_slots(self) -> None:
+        for index in range(len(self._bgm_slots)):
+            self._stop_bgm_slot(index)
+        self._bgm_current_slot = None
+        self._bgm_transition = None
+
+    def _base_bgm_volume(self, key: str) -> float:
+        return self.VOLUMES.get(key, 0.16)
+
+    def _duck_multiplier(self) -> float:
+        if self._cg_active:
+            return 0.24
+        if self._dialog_active:
+            return 0.34
+        return 1.0
+
+    def _ducked_bgm_volume(self, key: str) -> float:
+        return self._base_bgm_volume(key) * self._duck_multiplier()
+
+    def _set_slot_volume(self, slot_index: int, volume: float) -> None:
+        if slot_index >= len(self._bgm_slots):
+            return
+        slot = self._bgm_slots[slot_index]
+        if slot["key"] is None:
+            return
+        try:
+            if slot["channel"] is not None:
+                slot["channel"].set_volume(max(0.0, min(1.0, volume)))
+            elif slot["sound"] is not None:
+                slot["sound"].set_volume(max(0.0, min(1.0, volume)))
+        except pygame.error:
+            self.enabled = False
+
+    def _refresh_bgm_ducking(self) -> None:
+        if self._bgm_transition is None:
+            if self._bgm_current_slot is not None:
+                key = self._bgm_slots[self._bgm_current_slot]["key"]
+                if key is not None:
+                    self._set_slot_volume(self._bgm_current_slot, self._ducked_bgm_volume(key))
+            return
+        # update() owns fade ratios; this call only ensures the next frame
+        # applies the new ducking state without restarting either sound.
 
     def _load_sounds(self) -> None:
         if not self.enabled:
@@ -191,5 +540,7 @@ class AudioManager:
 
     def _on_dialog_active_changed(self, active: bool, **payload) -> None:
         _ = payload
+        self._dialog_active = bool(active)
         if active:
             self.play("dialog_open")
+        self._refresh_bgm_ducking()

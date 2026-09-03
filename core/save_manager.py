@@ -121,6 +121,7 @@ class SaveManager:
                 "wugang_polluted": False,
                 "yutu_polluted": False,
                 "report_completed": False,
+                "handoff_completed": False,
                 "return_countdown_active": False,
                 "return_countdown_remaining": 0.0,
                 "return_departed_on_time": False,
@@ -186,6 +187,7 @@ class SaveManager:
             "wugang_polluted",
             "yutu_polluted",
             "report_completed",
+            "handoff_completed",
             "return_countdown_active",
             "return_departed_on_time",
             "broken_jade_obtained",
@@ -247,6 +249,7 @@ class SaveManager:
             return migrated
         for key in (
             "report_completed",
+            "handoff_completed",
             "return_countdown_active",
             "return_departed_on_time",
             "pending_pool_ending",
@@ -254,6 +257,13 @@ class SaveManager:
         ):
             if key not in mainline and key in migrated:
                 mainline[key] = migrated[key]
+        if "handoff_completed" not in mainline:
+            # Legacy saves cannot resume the transient Chang'e dialogue.
+            mainline["handoff_completed"] = bool(
+                mainline.get("report_completed")
+                or mainline.get("pending_pool_ending")
+                or mainline.get("ending")
+            )
         if "return_countdown_remaining" not in mainline:
             if "return_countdown" in mainline:
                 mainline["return_countdown_remaining"] = mainline["return_countdown"]
@@ -270,7 +280,7 @@ class SaveManager:
                 migrated.get("return_to_moon_valley_before_timer", False)
             )
         if (
-            migrated.get("scene") in ("home", "playing")
+            migrated.get("scene") == "home"
             and mainline.get("report_completed")
             and mainline.get("return_countdown_active")
             and not mainline.get("pending_pool_ending")

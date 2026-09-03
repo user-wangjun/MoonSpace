@@ -136,13 +136,13 @@ def test_scene_transition_uses_all_monitor_sequence_phases():
     assert transition._monitor_frame_index() == 0
 
     transition.progress = 0.97
-    assert transition._monitor_frame_index() == 21
+    assert transition._monitor_frame_index() == transition.SEARCH_FRAME_INDEX
 
     transition.reveal_started = True
-    assert transition._monitor_frame_index() == 22
+    assert transition._monitor_frame_index() == transition.REVEAL_FRAME_START
 
     transition._reveal_elapsed = transition.REVEAL_HOLD
-    assert transition._monitor_frame_index() == 23
+    assert transition._monitor_frame_index() == transition.REVEAL_FRAME_END
 
 
 def test_scene_transition_draws_user_reference_sheet_inside_monitor():
@@ -152,3 +152,19 @@ def test_scene_transition_draws_user_reference_sheet_inside_monitor():
 
     assert transition._draw_monitor_sequence(surface) is True
     assert surface.get_at(transition.MONITOR_FRAME_RECT.center).a > 0
+
+
+def test_scene_transition_search_keeps_one_character_frame_and_anchor():
+    transition = SceneTransition()
+    transition.start(lambda: None)
+    transition.progress = 0.25
+    transition.search_offset = 3
+
+    assert transition._monitor_frame_index() == transition.SEARCH_FRAME_INDEX
+    assert transition._monitor_zoom() == 1.0
+
+    transition.reveal_started = True
+    transition._reveal_elapsed = transition.REVEAL_HOLD / 2
+
+    assert transition._monitor_frame_index() > transition.SEARCH_FRAME_INDEX
+    assert transition._monitor_zoom() > 1.0

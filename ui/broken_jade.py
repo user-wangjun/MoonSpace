@@ -17,6 +17,7 @@ class BrokenJadeView:
     ITEM_PATH = "sprites/moonspace/props/broken_jade_slip.png"
     STAGE_PICKUP = "pickup"
     STAGE_INSPECT = "inspect"
+    PICKUP_EXPLANATION = "字迹已被月水浸蚀，无法辨认。"
 
     def __init__(self) -> None:
         self.acquired = False
@@ -57,13 +58,14 @@ class BrokenJadeView:
             item = pygame.transform.smoothscale(item, (width, target_height))
             surface.blit(item, item.get_rect(center=(config.SCREEN_WIDTH // 2, 116)))
 
-        panel = pygame.Rect(70, 166, 340, 68)
+        panel = pygame.Rect(55, 166, 370, 74)
         draw_filled_rect(surface, panel, palette.BLACK)
         draw_double_rect(surface, panel, palette.MOON_WHITE, palette.DEEP_BLUE)
         if self.stage == self.STAGE_PICKUP:
-            render_text(surface, "获得：残破玉简", 176, 184, 15, palette.PALE_MOON)
-            render_text(surface, "E 打开", 218, 211, 11, palette.ASH_GRAY)
+            render_text(surface, "获得：残破玉简", 176, 180, 15, palette.PALE_MOON)
+            render_text(surface, self.PICKUP_EXPLANATION, 118, 201, 10, palette.MOON_WHITE)
+            render_text(surface, "E 打开", 218, 222, 11, palette.ASH_GRAY)
         else:
             lines = wrap_text("由于太过破旧和长时间的浸泡，根本无法辨别上面的字迹....", 24)
-            render_wrapped_text(surface, lines[:2], 88, 178, 12, palette.MOON_WHITE, 15)
-            render_text(surface, "E 收起", 218, 215, 11, palette.ASH_GRAY)
+            render_wrapped_text(surface, lines[:2], 72, 178, 12, palette.MOON_WHITE, 15)
+            render_text(surface, "E 收起", 218, 222, 11, palette.ASH_GRAY)

@@ -48,7 +48,10 @@ def test_rule_book_appends_broken_jade_clue_after_it_is_obtained():
 
     rule_book.set_broken_jade_obtained(True)
 
-    assert rule_book._rule_lines()[-1] == "残破的玉简似乎蕴含了什么秘密。"
+    assert rule_book._rule_lines()[-2:] == [
+        "2. 留名者，名归月籍。",
+        "3. 命既毕，速离月宫。",
+    ]
 
 
 def test_rule_book_draw_uses_register_frame_colors():

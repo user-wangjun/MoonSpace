@@ -15,6 +15,11 @@ from utils.pixel_art import draw_double_rect, draw_filled_rect, draw_rect
 class RuleBook:
     """Tab 打开/关闭的规则手册，展示玩家已发现的规则。"""
 
+    BROKEN_JADE_CLUES = (
+        "留名者，名归月籍。",
+        "命既毕，速离月宫。",
+    )
+
     def __init__(self, event_bus: EventBus, game_state: GameState) -> None:
         self.event_bus = event_bus
         self.game_state = game_state
@@ -94,7 +99,11 @@ class RuleBook:
         """格式化规则文本行。"""
         lines = [f"{index}. {text}" for index, text in enumerate(self.rules.values(), start=1)]
         if self.broken_jade_obtained:
-            lines.append("残破的玉简似乎蕴含了什么秘密。")
+            clue_start = len(lines) + 1
+            lines.extend(
+                f"{index}. {clue}"
+                for index, clue in enumerate(self.BROKEN_JADE_CLUES, start=clue_start)
+            )
         return lines
 
     def set_broken_jade_obtained(self, obtained: bool) -> None:

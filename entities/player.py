@@ -26,6 +26,7 @@ class Player:
         self.current_frame = 0
         self._animation_timer = 0.0
         self._interact_timer = 0.0
+        self._normalized_sprite_cache: dict[tuple[str, int], pygame.Surface] = {}
 
     def update(
         self,
@@ -283,4 +284,42 @@ class Player:
         col = self.current_frame % 4 if self.anim_state == "walk" else 0
         if self.anim_state == "interact":
             col = 1
-        return rows[row][col]
+        cache_key = (facing, col)
+        if cache_key not in self._normalized_sprite_cache:
+            # Normalize against the complete sheet.  Some direction rows have
+            # shorter source frames; using one global visible height prevents
+            # the hero from shrinking when walking or changing direction.
+            target_height = max(
+                frame.get_bounding_rect(min_alpha=1).height
+                for sprite_row in rows
+                for frame in sprite_row
+            )
+            normalized_row = self._normalize_sprite_row(rows[row], target_height)
+            self._normalized_sprite_cache.update(
+                {(facing, index): frame for index, frame in enumerate(normalized_row)}
+            )
+        return self._normalized_sprite_cache[cache_key]
+
+    @staticmethod
+    def _normalize_sprite_row(row: list[pygame.Surface], target_height: int) -> list[pygame.Surface]:
+        """统一精灵表各动画帧的可见身高和脚底锚点。"""
+        normalized_row = []
+        for frame in row:
+            bounds = frame.get_bounding_rect(min_alpha=1)
+            if bounds.width <= 0 or bounds.height <= 0:
+                normalized_row.append(frame.copy())
+                continue
+
+            content = frame.subsurface(bounds).copy()
+            target_width = max(1, round(content.get_width() * target_height / bounds.height))
+            content = pygame.transform.smoothscale(content, (target_width, target_height))
+            normalized = pygame.Surface(frame.get_size(), pygame.SRCALPHA)
+            normalized.blit(
+                content,
+                (
+                    (frame.get_width() - target_width) // 2,
+                    frame.get_height() - target_height,
+                ),
+            )
+            normalized_row.append(normalized)
+        return normalized_row

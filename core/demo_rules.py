@@ -17,7 +17,7 @@ PSEUDO_RULE_HELP_WUGANG = "pseudo_rule_help_wugang"
 
 RULE_TEXTS = {
     RULE_BOW_TO_TREE: "月桂未见血时，来使不得近。异像现时，方可查验。",
-    RULE_POOL_REFLECTION: "月池之水面，不可见使者的影子。凝视月池之久，陟罚自有分晓。",
+    RULE_POOL_REFLECTION: "凝视月池至久，陟罚自有分晓。",
     RULE_NO_EYE_CONTACT: "玉兔捣药时，不可与之对视。行走于前，恐被其噬。",
     RULE_TREE_BLEEDING: "吴刚第五千斧落下时，月桂流血自修，十息之内来使只可记录，不可代职。",
 }

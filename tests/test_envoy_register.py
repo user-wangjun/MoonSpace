@@ -28,21 +28,83 @@ def test_records_and_registration_open_as_separate_interactions():
     register.close()
 
     register.open_register()
-    assert register.mode == register.MODE_VERIFY
+    assert register.mode == register.MODE_REGISTER
+    assert not hasattr(register, "MODE_MENU")
+    assert not hasattr(register, "MODE_VERIFY")
+    assert not hasattr(register, "MODE_WRITE")
 
 
-def test_identity_verification_needs_no_personal_name():
+def test_registration_page_accepts_name_and_submits_with_enter():
     register = EnvoyRegister()
     inputs = InputManager()
     register.open_register()
 
     assert register.update(inputs) is False
-    inputs._pressed_once.add(config.ACTION_INTERACT)
+    inputs.text_input = "玄"
+    inputs._keys_pressed_once.add(pygame.K_RETURN)
 
     assert register.update(inputs) is True
-    assert register.name == ""
+    assert register.name == "玄"
     assert register.registered is True
     assert register.mode == register.MODE_COMPLETE
+
+
+def test_registration_page_does_not_submit_empty_name_on_enter():
+    register = EnvoyRegister()
+    inputs = InputManager()
+    register.open_register()
+    inputs._keys_pressed_once.add(pygame.K_RETURN)
+
+    assert register.update(inputs) is False
+    assert register.registered is False
+    assert register.mode == register.MODE_REGISTER
+
+
+def test_registration_page_disables_enter_button_until_name_is_typed(monkeypatch):
+    register = EnvoyRegister()
+    register.open_register()
+    buttons = []
+    monkeypatch.setattr(
+        register,
+        "_draw_button",
+        lambda surface, rect, label, *, active: buttons.append((label, active)),
+    )
+
+    register._draw_name_input(pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT)))
+
+    assert ("Enter 登记", False) in buttons
+
+
+def test_registration_page_uses_confirmed_unsubmitted_columns():
+    register = EnvoyRegister()
+
+    assert register._registration_columns(False) == (
+        "来使登记", "凌霄来使", "来使姓名", "待书",
+        "职司已验", "月桂已查", "玉兔已查", "入宫登记",
+        "复命未毕", "候月未定", "返程未定", "神志清明", "形貌如初",
+        "尚未归档", "广寒宫录",
+    )
+
+
+def test_registration_page_restores_finalized_status_columns():
+    register = EnvoyRegister()
+
+    columns = register._registration_columns(True)
+
+    assert columns[11:13] == ("神志清明", "形貌如初")
+
+
+def test_registration_page_accepts_real_textinput_events():
+    register = EnvoyRegister()
+    inputs = InputManager()
+    register.open_register()
+    inputs.begin_frame()
+    inputs.process_event(pygame.event.Event(pygame.TEXTINPUT, {"text": "玄"}))
+    inputs.process_event(pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_RETURN, "mod": 0}))
+
+    assert register.update(inputs) is True
+    assert register.name == "玄"
+    assert register.registered is True
 
 
 def test_leaving_write_mode_does_not_keep_unsubmitted_name():

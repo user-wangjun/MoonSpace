@@ -34,7 +34,7 @@ def test_home_tutorial_sign_adds_rules_and_shows_operation_dialog():
     assert scene.sign_read is True
     assert RULE_NO_EYE_CONTACT in state.known_rules
     assert dialogs
-    assert any("不要让角色正面朝向" in line for line in dialogs[-1]["lines"])
+    assert not any("不要让角色正面朝向" in line for line in dialogs[-1]["lines"])
     assert not any("没有安装完成" in line for line in dialogs[-1]["lines"])
     assert any("回到地球" in line for line in dialogs[-1]["lines"])
     assert any("六条规条" in line for line in dialogs[-1]["lines"])

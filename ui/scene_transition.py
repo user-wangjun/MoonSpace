@@ -18,8 +18,14 @@ class SceneTransition:
     """Moon Palace loading transition with a reveal pause before changing scenes."""
 
     LOAD_DURATION = 1.45
-    REVEAL_HOLD = 0.65
+    # The reveal is intentionally a short snap, not a long presentation pose.
+    REVEAL_HOLD = 0.22
     FOUND_PROGRESS = 0.98
+    SEARCH_FRAME_INDEX = 0
+    REVEAL_FRAME_START = 12
+    REVEAL_FRAME_END = 23
+    REVEAL_MAX_ZOOM = 1.24
+    SEARCH_JITTER_SCALE = 0.35
     MONITOR_SCREEN_RECT = pygame.Rect(115, 30, 251, 161)
     MONITOR_FRAME_RECT = pygame.Rect(115, 48, 251, 126)
     MONITOR_SOURCE_CROP = pygame.Rect(22, 2, 318, 177)
@@ -129,18 +135,46 @@ class SceneTransition:
         frames = [frame for row in grid for frame in row]
         frame = frames[self._monitor_frame_index()]
         frame = frame.subsurface(self.MONITOR_SOURCE_CROP).copy()
-        frame = pygame.transform.smoothscale(frame, self.MONITOR_FRAME_RECT.size)
+        zoom = self._monitor_zoom()
+        target_size = (
+            max(1, round(self.MONITOR_FRAME_RECT.width * zoom)),
+            max(1, round(self.MONITOR_FRAME_RECT.height * zoom)),
+        )
+        frame = pygame.transform.smoothscale(frame, target_size)
         draw_filled_rect(surface, self.MONITOR_SCREEN_RECT, palette.BLACK)
-        surface.blit(frame, self.MONITOR_FRAME_RECT.topleft)
+        previous_clip = surface.get_clip()
+        surface.set_clip(self.MONITOR_SCREEN_RECT)
+        search_jitter = 0
+        if not self.reveal_started:
+            search_jitter = round(self.search_offset * self.SEARCH_JITTER_SCALE)
+        frame_center = (self.MONITOR_FRAME_RECT.centerx + search_jitter, self.MONITOR_FRAME_RECT.centery)
+        surface.blit(frame, frame.get_rect(center=frame_center))
+        surface.set_clip(previous_clip)
         return True
 
-    def _monitor_frame_index(self) -> int:
-        """将加载进度映射到转身过程，并把最后两帧留给发现提示。"""
+    def _monitor_zoom(self) -> float:
+        """Return the camera scale used for the sudden face-rush."""
         if not self.reveal_started:
-            return min(21, int(self.progress * 22))
+            return 1.0
+        reveal_progress = min(1.0, self._reveal_elapsed / max(self.REVEAL_HOLD, 0.001))
+        # The camera rushes in early; the final two frames only flash by.
+        zoom_progress = reveal_progress**0.55
+        return 1.0 + (self.REVEAL_MAX_ZOOM - 1.0) * zoom_progress
+
+    def _monitor_frame_index(self) -> int:
+        """将稳定寻找帧映射到突脸序列，并把最后两帧留给发现提示。"""
+        if not self.reveal_started:
+            # The source atlas has noticeable AI pose drift during the search.
+            # Keep one silhouette and anchor, then reserve all shape changes
+            # for the deliberate turn-and-rush reveal.
+            return self.SEARCH_FRAME_INDEX
 
         reveal_progress = min(1.0, self._reveal_elapsed / max(self.REVEAL_HOLD, 0.001))
-        return min(self.MONITOR_FRAME_COUNT - 1, 22 + int(reveal_progress * 2))
+        reveal_span = self.REVEAL_FRAME_END - self.REVEAL_FRAME_START + 1
+        return min(
+            self.REVEAL_FRAME_END,
+            self.REVEAL_FRAME_START + int(reveal_progress * reveal_span),
+        )
 
     def _draw_fallback_background(self, surface: pygame.Surface) -> None:
         surface.fill(palette.BLACK)

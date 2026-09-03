@@ -47,3 +47,19 @@ def test_broken_jade_view_draws_without_text_or_frame_clipping():
     view.draw(surface)
 
     assert surface.get_bounding_rect().size == surface.get_size()
+
+
+def test_broken_jade_pickup_includes_reason_for_unreadable_text(monkeypatch):
+    import ui.broken_jade as broken_jade_module
+
+    rendered = []
+    monkeypatch.setattr(
+        broken_jade_module,
+        "render_text",
+        lambda surface, text, *args: rendered.append(text) or True,
+    )
+    view = BrokenJadeView()
+    view.acquire()
+    view.draw(pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA))
+
+    assert BrokenJadeView.PICKUP_EXPLANATION in rendered

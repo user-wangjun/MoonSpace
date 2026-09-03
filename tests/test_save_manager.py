@@ -80,6 +80,7 @@ def test_default_save_starts_before_full_mainline(tmp_path):
         "wugang_polluted": False,
         "yutu_polluted": False,
         "report_completed": False,
+        "handoff_completed": False,
         "return_countdown_active": False,
         "return_countdown_remaining": 0.0,
         "return_departed_on_time": False,
@@ -173,7 +174,7 @@ def test_legacy_flat_envoy_and_countdown_fields_migrate_on_load(tmp_path):
     assert migrated["mainline"]["return_departed_on_time"] is False
 
 
-def test_legacy_countdown_in_courtyard_is_migrated_to_completed_departure(tmp_path):
+def test_legacy_countdown_in_courtyard_keeps_running_until_courtyard_exit(tmp_path):
     manager = SaveManager(tmp_path)
     legacy = manager.default_save(1)
     legacy["scene"] = "playing"
@@ -188,9 +189,9 @@ def test_legacy_countdown_in_courtyard_is_migrated_to_completed_departure(tmp_pa
 
     migrated = manager.load(1)
 
-    assert migrated["mainline"]["return_departed_on_time"] is True
-    assert migrated["mainline"]["return_countdown_active"] is False
-    assert migrated["mainline"]["return_countdown_remaining"] == 0.0
+    assert migrated["mainline"]["return_departed_on_time"] is False
+    assert migrated["mainline"]["return_countdown_active"] is True
+    assert migrated["mainline"]["return_countdown_remaining"] == 12.5
 
 
 def test_legacy_double_pollution_id_is_migrated_to_be_double(tmp_path):

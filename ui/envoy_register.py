@@ -15,9 +15,7 @@ from utils.pixel_art import draw_double_rect, draw_filled_rect
 class EnvoyRegister:
     """用同一套十五片玉简制式处理登记、旧卷查阅与封卷。"""
 
-    MODE_MENU = "menu"
-    MODE_VERIFY = "verify"
-    MODE_WRITE = "write"
+    MODE_REGISTER = "register"
     MODE_READ = "read"
     MODE_COMPLETE = "complete"
     MODE_SEALED = "sealed"
@@ -53,8 +51,7 @@ class EnvoyRegister:
 
     def __init__(self) -> None:
         self.active = False
-        self.mode = self.MODE_VERIFY
-        self.menu_index = 0
+        self.mode = self.MODE_REGISTER
         self.page = 0
         self.name = ""
         self.draft_name = ""
@@ -67,14 +64,16 @@ class EnvoyRegister:
         self.open_register()
 
     def open_register(self) -> None:
-        """从登记位置打开可选的来使验牒，不要求输入个人姓名。"""
+        """从登记位置打开唯一的来使姓名登记页。"""
         self.active = True
-        self.mode = self.MODE_SEALED if self.registered else self.MODE_VERIFY
-        self.menu_index = 0
+        self.mode = self.MODE_SEALED if self.registered else self.MODE_REGISTER
         self.draft_name = ""
         self.etched_char_count = 0
         self.etch_timer = 0.0
-        pygame.key.stop_text_input()
+        if self.mode == self.MODE_REGISTER:
+            pygame.key.start_text_input()
+        else:
+            pygame.key.stop_text_input()
 
     def open_records(self) -> None:
         """从查阅位置直接打开由新到旧排列的三卷名录。"""
@@ -116,16 +115,6 @@ class EnvoyRegister:
             elif input_manager.was_key_pressed(pygame.K_BACKSPACE):
                 self.close()
             return False
-
-        if self.mode == self.MODE_VERIFY:
-            if input_manager.was_pressed(config.ACTION_INTERACT):
-                self.registered = True
-                self.mode = self.MODE_COMPLETE
-                return True
-            return False
-
-        if self.mode == self.MODE_MENU:
-            self.mode = self.MODE_WRITE
 
         if input_manager.was_key_pressed(pygame.K_BACKSPACE):
             self.draft_name = self.draft_name[:-1]
@@ -170,16 +159,11 @@ class EnvoyRegister:
             self._draw_navigation(surface)
             return
 
-        if self.mode == self.MODE_VERIFY:
-            self._draw_columns(surface, self._verification_columns())
-            self._draw_identity_verify(surface)
-            return
-
         finalized = self.mode in (self.MODE_COMPLETE, self.MODE_SEALED)
-        if self.mode == self.MODE_WRITE:
+        if self.mode == self.MODE_REGISTER:
             self._draw_name_highlight(surface)
         self._draw_columns(surface, self._registration_columns(finalized))
-        if self.mode == self.MODE_WRITE:
+        if self.mode == self.MODE_REGISTER:
             self._draw_name_input(surface)
         else:
             self._draw_close_action(surface, "E 合卷" if self.mode == self.MODE_COMPLETE else "E / Esc 退出")
@@ -219,33 +203,16 @@ class EnvoyRegister:
         else:
             shown_name = self.draft_name[: self.etched_char_count] or "待书"
             registration_status = "入宫登记"
+        # 这两格是登记玉简的固定验看结果，不应因为姓名尚未落笔而消失。
+        # 提交前后只改变姓名和“入宫”状态，避免打开登记页时出现断行空格。
+        mental_status = "神志清明"
+        appearance_status = "形貌如初"
         return (
-            "新登记", "凌霄来使", "来使姓名", shown_name,
+            "来使登记", "凌霄来使", "来使姓名", shown_name,
             "职司已验", "月桂已查", "玉兔已查", registration_status,
-            "复命未毕", "候月未定", "返程未定", "神志清明",
-            "形貌如初", "尚未归档", "广寒宫录",
+            "复命未毕", "候月未定", "返程未定", mental_status, appearance_status,
+            "尚未归档", "广寒宫录",
         )
-
-    @staticmethod
-    def _verification_columns() -> tuple[str, ...]:
-        """验牒页只确认已有来使身份，明确提示不必留下姓名。"""
-        return (
-            "身份验牒", "凌霄来使", "姓名不记", "无需留名",
-            "职司待验", "月桂待查", "玉兔待查", "复命未毕",
-            "不得代职", "不得候宫", "准入广寒", "归返月谷",
-            "旧卷可阅", "验牒可撤", "广寒宫录",
-        )
-
-    def _draw_identity_verify(self, surface: pygame.Surface) -> None:
-        """绘制不收集姓名的身份确认提示。"""
-        panel = pygame.Rect(94, 219, 292, 25)
-        draw_filled_rect(surface, panel, (4, 8, 15))
-        draw_double_rect(surface, panel, palette.MOON_WHITE, palette.DEEP_BLUE)
-        font = load_font(10)
-        text = font.render("身份：凌霄来使    无需留名", False, palette.MOON_WHITE)
-        surface.blit(text, text.get_rect(center=panel.center))
-        self._draw_button(surface, pygame.Rect(126, 249, 105, 18), "Esc 退出", active=False)
-        self._draw_button(surface, pygame.Rect(249, 249, 105, 18), "E 确认验牒", active=True)
 
     def _draw_name_highlight(self, surface: pygame.Surface) -> None:
         left = self.SLIP_BOUNDARIES[self.NAME_SLIP_INDEX]
@@ -265,7 +232,12 @@ class EnvoyRegister:
         surface.blit(typed, typed.get_rect(center=input_panel.center))
 
         self._draw_button(surface, pygame.Rect(126, 249, 105, 18), "Esc 退出", active=False)
-        self._draw_button(surface, pygame.Rect(249, 249, 105, 18), "Enter 登记", active=True)
+        self._draw_button(
+            surface,
+            pygame.Rect(249, 249, 105, 18),
+            "Enter 登记",
+            active=bool(self.draft_name),
+        )
 
     @staticmethod
     def _draw_button(surface: pygame.Surface, rect: pygame.Rect, label: str, *, active: bool) -> None:
@@ -292,7 +264,7 @@ class EnvoyRegister:
         self.draft_name = ""
         self.registered = bool(data.get("registered", False))
         self.active = False
-        self.mode = self.MODE_SEALED if self.registered else self.MODE_VERIFY
+        self.mode = self.MODE_SEALED if self.registered else self.MODE_REGISTER
         self.etched_char_count = 0
         self.etch_timer = 0.0
 
