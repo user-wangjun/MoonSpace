@@ -58,6 +58,13 @@ class TriggerZone:
         self._cooldown_remaining = 0.0
         self._stay_time = 0.0
 
+    @property
+    def stay_progress(self) -> float:
+        """连续停留进度，供环境预兆使用，不额外推进规则计时。"""
+        if self.required_stay <= 0:
+            return 0.0
+        return min(1.0, self._stay_time / self.required_stay)
+
 
 class CircularTriggerZone(TriggerZone):
     """圆形触发区；用目标矩形到圆心的最近点判断相交。"""

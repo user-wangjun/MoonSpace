@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -56,6 +57,7 @@ def test_stage_imagegen_v4_large_assets_outputs_expected_sizes():
 
 
 def test_stage_imagegen_v4_large_assets_uses_complete_player_sheet():
+    shutil.rmtree(OUT_DIR, ignore_errors=True)
     stage_large_assets()
     pygame.init()
     pygame.display.set_mode((1, 1))

@@ -18,6 +18,8 @@ class DialogBox:
     SPEAKER_NAMES = {
         "wugang": "吴刚",
         "yutu": "玉兔",
+        "repairman": "守月人",
+        "toad_statue": "渗血蟾蜍像",
         "sign_board": "告示牌",
         "home_sign": "告示牌",
         "tutorial_shadow": "月影",

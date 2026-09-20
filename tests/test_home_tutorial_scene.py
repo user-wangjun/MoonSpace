@@ -37,7 +37,7 @@ def test_home_tutorial_sign_adds_rules_and_shows_operation_dialog():
     assert not any("不要让角色正面朝向" in line for line in dialogs[-1]["lines"])
     assert not any("没有安装完成" in line for line in dialogs[-1]["lines"])
     assert any("回到地球" in line for line in dialogs[-1]["lines"])
-    assert any("六条规条" in line for line in dialogs[-1]["lines"])
+    assert any("七条规条" in line for line in dialogs[-1]["lines"])
 
 
 def test_home_tutorial_sign_dialog_no_longer_requires_shadow_practice():
@@ -151,6 +151,27 @@ def test_home_tutorial_props_block_statue_cliffs_and_lanterns():
         scene.right_lantern_rect.center,
     ):
         assert any(rect.collidepoint(point) for rect in rects)
+
+
+def test_noticeboard_collision_follows_new_feet_instead_of_empty_floor():
+    scene = HomeTutorialScene(EventBus())
+    obstacles = scene.get_collision_rects()
+    assert any(rect.collidepoint(480, 291) for rect in obstacles)
+    assert not any(rect.collidepoint(480, 321) for rect in obstacles)
+
+
+def test_noticeboard_occludes_player_behind_it_but_preserves_gap_between_legs():
+    scene = HomeTutorialScene(EventBus())
+    background = load_image("sprites/moonspace/home_tutorial_bg.png")
+    surface = background.copy()
+    pygame.draw.rect(surface, (255, 0, 255), (470, 225, 20, 70))
+    scene.draw_foreground(surface, (0, 0), 280)
+    assert surface.get_at((480, 250)) == background.get_at((480, 250))
+    assert surface.get_at((480, 280))[:3] == (255, 0, 255)
+
+    pygame.draw.rect(surface, (255, 0, 255), (470, 225, 20, 70))
+    scene.draw_foreground(surface, (0, 0), 320)
+    assert surface.get_at((480, 250))[:3] == (255, 0, 255)
 
 
 def test_home_tutorial_draw_uses_preview_background_and_scene_markers():

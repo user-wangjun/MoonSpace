@@ -11,6 +11,7 @@ from utils import palette
 from utils.assets import load_image
 from utils.pixel_art import draw_double_rect, draw_filled_rect
 from world.sign_board import BASIC_RULES
+from world.scenery import HOME_SIGN, HOME_LANTERNS, HOME_PROPS, draw_scenery_foreground
 
 
 HOME_PLAYER_START_X = 472
@@ -22,7 +23,7 @@ class HomeTutorialScene:
 
     SIGN_DIALOG_LINES = [
         "月宫把你记成凌霄来使；想回到地球，必须按它的规条活到门开。",
-        "六条规条已经刻入手册：流程、稽首、避视、月池、月桂流血与不得候宫。",
+        "七条规条已经刻入手册。入宫后须查验伐桂、捣药与偏殿修月，三验俱全才能复命。",
         *[f"规条：{rule_text}" for rule_text in BASIC_RULES.values()],
         "操作：用 W/A/S/D 或方向键转身、绕开；Tab 可以随时打开规则手册。",
         "读完所有规条后，月宫大门便会开启。",
@@ -35,14 +36,14 @@ class HomeTutorialScene:
         # 保留旧存档字段兼容性；练习步骤已经移除。
         self.practice_done = True
         self.event_bus.subscribe(DIALOG_ACTIVE_CHANGED, self._on_dialog_active_changed)
-        self.sign_rect = pygame.Rect(423, 295, 116, 38)
+        self.sign_rect = pygame.Rect(HOME_SIGN.footprint)
         self.sign_interaction_rect = self.sign_rect.inflate(46, 34)
         self.shadow_rect = pygame.Rect(710, 270, 34, 48)
         self.rabbit_enclosure_rect = pygame.Rect(666, 214, 152, 112)
         self.left_cliff_rect = pygame.Rect(0, 166, 72, config.MAP_HEIGHT - 166)
         self.right_cliff_rect = pygame.Rect(888, 166, 72, config.MAP_HEIGHT - 166)
-        self.left_lantern_rect = pygame.Rect(101, 185, 34, 58)
-        self.right_lantern_rect = pygame.Rect(825, 185, 34, 58)
+        self.left_lantern_rect = pygame.Rect(HOME_LANTERNS[0].footprint)
+        self.right_lantern_rect = pygame.Rect(HOME_LANTERNS[1].footprint)
         self.gate_trigger_rect = pygame.Rect(398, 96, 164, 36)
         self.altar_rect = pygame.Rect(402, 436, 156, 72)
 
@@ -150,6 +151,14 @@ class HomeTutorialScene:
         player.position.xy = (HOME_PLAYER_START_X, HOME_PLAYER_START_Y)
         player.rect.topleft = (HOME_PLAYER_START_X, HOME_PLAYER_START_Y)
         player.facing = "up"
+
+    def draw_foreground(self, surface: pygame.Surface, camera_offset: tuple[int, int], feet_y: int) -> None:
+        path = "sprites/moonspace/home_tutorial_bg_open.png" if self.gate_open else "sprites/moonspace/home_tutorial_bg.png"
+        try:
+            background = load_image(path)
+        except (FileNotFoundError, pygame.error):
+            return
+        draw_scenery_foreground(surface, background, HOME_PROPS, camera_offset, feet_y)
 
     def _draw_fallback(self, surface: pygame.Surface, camera_offset: tuple[int, int]) -> None:
         surface.fill(palette.NIGHT_BLACK)

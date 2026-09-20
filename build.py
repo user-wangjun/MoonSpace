@@ -38,7 +38,7 @@ def main() -> None:
     ]
 
     separator = ";" if sys.platform.startswith("win") else ":"
-    for asset_group in ("audio", "sprites"):
+    for asset_group in ("audio", "sprites", "fonts"):
         source_dir = PROJECT_ROOT / "assets" / asset_group
         if source_dir.exists():
             command.extend(

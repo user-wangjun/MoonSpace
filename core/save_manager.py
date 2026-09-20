@@ -118,6 +118,8 @@ class SaveManager:
             "mainline": {
                 "wugang_checked": False,
                 "yutu_checked": False,
+                "repair_checked": False,
+                "repair_door_open": False,
                 "wugang_polluted": False,
                 "yutu_polluted": False,
                 "report_completed": False,
@@ -151,6 +153,9 @@ class SaveManager:
     @staticmethod
     def _validate_payload(slot_id: int, data: dict[str, Any]) -> None:
         """验证会直接参与状态恢复的字段，避免坏档在进入游戏后才崩溃。"""
+        events = data.get("checkpoint_events", [])
+        if not isinstance(events, list) or any(not isinstance(event, str) for event in events):
+            raise CorruptSaveError(f"save slot {slot_id} has invalid checkpoint_events")
         for key in ("opening_seen", "home_tutorial_done"):
             if key in data and not isinstance(data[key], bool):
                 raise CorruptSaveError(f"save slot {slot_id} has invalid {key}")
@@ -184,6 +189,8 @@ class SaveManager:
         for key in (
             "wugang_checked",
             "yutu_checked",
+            "repair_checked",
+            "repair_door_open",
             "wugang_polluted",
             "yutu_polluted",
             "report_completed",

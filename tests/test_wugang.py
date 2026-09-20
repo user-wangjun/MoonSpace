@@ -6,6 +6,17 @@ import pytest
 import config
 from core.event_bus import EventBus, TREE_BLEEDING
 from entities.wugang import Wugang
+
+
+def test_wugang_feet_remain_planted_across_all_chop_poses():
+    wugang = Wugang(EventBus(), 100, 120)
+    bottoms = []
+    for frame in range(16):
+        wugang.current_frame = frame
+        surface = pygame.Surface((240, 240), pygame.SRCALPHA)
+        wugang.draw(surface)
+        bottoms.append(surface.get_bounding_rect(min_alpha=8).bottom)
+    assert set(bottoms) == {144}
 from utils import palette
 from world.laurel_tree import LaurelTree
 
@@ -77,7 +88,7 @@ def test_wugang_default_position_stands_by_laurel_tree():
 
 
 @pytest.mark.parametrize("frame_index", range(16))
-def test_wugang_large_chop_sprite_uses_all_16_frames(monkeypatch, frame_index):
+def test_wugang_chop_cycle_uses_held_axe_poses(monkeypatch, frame_index):
     bus = EventBus()
     wugang = Wugang(bus)
     wugang.current_frame = frame_index
@@ -85,10 +96,12 @@ def test_wugang_large_chop_sprite_uses_all_16_frames(monkeypatch, frame_index):
     frame_width = 76
     frame_height = 92
     grid = []
+    # The neutral/recovery cells omit the prop; hold the nearest complete pose.
+    drawn_index = (1, 1, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 13)[frame_index]
     expected = (
-        (frame_index * 13 + 17) % 255,
-        (frame_index * 29 + 31) % 255,
-        (frame_index * 47 + 43) % 255,
+        (drawn_index * 13 + 17) % 255,
+        (drawn_index * 29 + 31) % 255,
+        (drawn_index * 47 + 43) % 255,
     )
 
     for row in range(4):

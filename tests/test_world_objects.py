@@ -1,11 +1,13 @@
 """场景物体测试。"""
 
 import pygame
+import pytest
 
 import config
 from core.event_bus import EventBus
 from core.game_state import GameState
 from utils import palette
+from utils.assets import load_image
 from world.laurel_tree import LaurelTree
 from world.moon_pool import MoonPool
 from world.palace_wall import PalaceWall
@@ -151,6 +153,35 @@ def test_laurel_tree_draw_adds_bleeding_pixels_on_large_background():
         for y in range(sample.top, sample.bottom)
     }
     assert palette.BLOOD_RED in colors
+
+
+@pytest.mark.parametrize("elapsed", [0.0, 0.7, 5.0, 9.8])
+def test_laurel_bleeding_stays_attached_to_tree_during_breathing(elapsed):
+    tree = LaurelTree(0, 0)
+    tree.update(elapsed)
+    idle = pygame.Surface((176, 220), pygame.SRCALPHA)
+    tree.draw(idle)
+    tree.set_bleeding(True)
+    tree.bleed_time = elapsed
+    bleeding = pygame.Surface((176, 220), pygame.SRCALPHA)
+    tree.draw(bleeding)
+
+    # Independently render the breathing silhouette from the actual asset.
+    sprite = load_image("sprites/moonspace/laurel_tree.png")
+    silhouette = pygame.Surface((176, 220), pygame.SRCALPHA)
+    if elapsed in (0.7, 5.0, 9.8):
+        sprite = pygame.transform.smoothscale(sprite, (178, 222))
+        silhouette.blit(sprite, (-1, -2))
+    else:
+        silhouette.blit(sprite, (0, 0))
+    changed = []
+    for x in range(176):
+        for y in range(220):
+            if idle.get_at((x, y)) != bleeding.get_at((x, y)):
+                changed.append((x, y))
+                assert silhouette.get_at((x, y)).a > 0, (elapsed, x, y)
+                assert bleeding.get_at((x, y))[:3] not in (palette.PALE_MOON, palette.HORROR_CYAN_GRAY)
+    assert changed
 
 
 def test_laurel_tree_large_background_mode_draws_complete_foreground_tree_when_idle():
@@ -354,6 +385,24 @@ def test_moon_pool_pollution_is_an_inner_overlay_without_changing_geometry():
         (pool.visual_rect.right - 6, pool.visual_rect.centery),
     )
     assert all(normal.get_at(point) == polluted.get_at(point) for point in rim_points)
+
+
+def test_pool_premonition_changes_water_but_not_rim_or_violation_timer():
+    pool = MoonPool()
+    normal = pygame.Surface((18, 28), pygame.SRCALPHA)
+    normal.fill((180, 190, 220, 255))
+    turned = normal.copy()
+    turned.fill((20, 30, 50, 255), pygame.Rect(4, 2, 10, 10))
+    frames = []
+    for progress in (0.0, 0.75):
+        pool.gaze_progress = progress
+        frame = pygame.Surface((960, 540), pygame.SRCALPHA)
+        pool.draw(frame, reflection_sprite=normal, anomaly_sprite=turned, show_reflection=True)
+        frames.append(frame)
+    assert pygame.image.tobytes(frames[0], "RGBA") != pygame.image.tobytes(frames[1], "RGBA")
+    rim = pygame.Rect(pool.visual_rect.left, pool.visual_rect.top, pool.visual_rect.width, pool.WATER_INSET)
+    assert pygame.image.tobytes(frames[0].subsurface(rim), "RGBA") == pygame.image.tobytes(frames[1].subsurface(rim), "RGBA")
+    assert pool.reflection_flash_timer == 0
 
 
 def test_moon_pool_violation_reflection_adds_red_eyes():

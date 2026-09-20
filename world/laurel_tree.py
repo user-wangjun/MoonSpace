@@ -50,38 +50,15 @@ class LaurelTree:
         trunk = self.trunk_rect.move(ox, oy)
         crown = self.crown_rect.inflate(pulse * 2, pulse * 2).move(ox - pulse, oy - pulse)
         try:
-            load_image("sprites/moonspace/courtyard_bg_large.png")
-            large_background_available = True
-        except (FileNotFoundError, pygame.error):
-            large_background_available = False
-
-        if large_background_available:
-            try:
-                sprite = load_image("sprites/moonspace/laurel_tree.png")
-            except (FileNotFoundError, pygame.error):
-                sprite = None
-
-            if sprite is not None:
-                self._blit_living_sprite(surface, sprite, ox, oy, breath)
-            self._draw_large_background_overlay(surface, trunk)
-            self._draw_living_overlay(surface, ox, oy)
-            return
-
-        try:
             sprite = load_image("sprites/moonspace/laurel_tree.png")
         except (FileNotFoundError, pygame.error):
             sprite = None
 
         if sprite is not None:
-            self._blit_living_sprite(surface, sprite, ox, oy, breath)
-            self._draw_living_overlay(surface, ox, oy)
-            if self.bleeding:
-                drip = int(self.bleed_time * 9) % 14
-                pulse = int((math.sin(self.bleed_time * 5) + 1) * 2)
-                draw_filled_rect(surface, (trunk.x + 7, trunk.y + 21, 2, 18), palette.BLOOD_RED)
-                draw_filled_rect(surface, (trunk.x + 11, trunk.y + 26, 1, 13), palette.DARK_BLOOD)
-                draw_filled_rect(surface, (trunk.x + 8, trunk.y + 23 + drip, 2, 3), palette.BLOOD_RED)
-                draw_filled_rect(surface, (trunk.x - 6, trunk.bottom - 4, 18 + pulse, 1), palette.BLOOD_RED)
+            # Compose wounds before breathing/camera transforms so they stay on bark.
+            living = sprite.copy()
+            self._draw_living_overlay(living, sprite)
+            self._blit_living_sprite(surface, living, ox, oy, breath)
             return
 
         draw_filled_rect(surface, (trunk.x - 8, trunk.bottom - 6, 34, 3), palette.LAUREL_DARK)
@@ -133,60 +110,35 @@ class LaurelTree:
         y = self.sprite_rect.bottom + oy - height
         surface.blit(living, (x, y))
 
-    def _draw_living_overlay(self, surface: pygame.Surface, ox: int, oy: int) -> None:
-        """Add subtle branch twitches and wound glows so the tree feels alive."""
-        sway = int(math.sin(self._time * 2.8) * 2)
-        glow = 1 + int((math.sin(self._time * 4.2) + 1) * 1.5)
-        base_x = self.sprite_rect.x + ox
-        base_y = self.sprite_rect.y + oy
-        wounds = (
-            (88, 78),
-            (101, 111),
-            (75, 139),
-            (114, 159),
-            (91, 184),
+    def _draw_living_overlay(self, surface: pygame.Surface, sprite: pygame.Surface) -> None:
+        """Follow the painted wounds and bark grooves in sprite-local coordinates."""
+        overlay = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+        paths = (
+            ((85, 63), (86, 70), (92, 79), (93, 88), (87, 97)),
+            ((77, 103), (79, 111), (86, 120), (88, 128)),
+            ((89, 137), (86, 145), (90, 154), (97, 163)),
+            ((101, 165), (98, 174), (91, 184), (87, 195), (78, 207)),
         )
-        for x, y in wounds:
-            draw_filled_rect(surface, (base_x + x, base_y + y, 3, 2 + glow), palette.DARK_BLOOD)
-            if glow >= 3:
-                draw_filled_rect(surface, (base_x + x + 1, base_y + y + 1, 1, 2), palette.BLOOD_RED)
+        glow = (math.sin(self._time * 4.2) + 1) * 0.5
+        for points in paths:
+            pygame.draw.lines(overlay, (*palette.DARK_BLOOD, int(50 + glow * 45)), False, points[:2], 2)
 
-        twig_color = palette.HORROR_CYAN_GRAY if int(self._time * 5) % 2 else palette.DEEP_BLUE
-        twigs = (
-            ((base_x + 28, base_y + 68), (base_x + 15 + sway, base_y + 58)),
-            ((base_x + 142, base_y + 72), (base_x + 157 + sway, base_y + 62)),
-            ((base_x + 50, base_y + 38), (base_x + 42 - sway, base_y + 25)),
-            ((base_x + 123, base_y + 35), (base_x + 132 + sway, base_y + 22)),
-        )
-        for start, end in twigs:
-            pygame.draw.line(surface, twig_color, start, end, 1)
+        if self.bleeding:
+            # The final two seconds close the wounds gradually, without flashing scars.
+            strength = min(1.0, max(0.0, (self.BLEED_DURATION - self.bleed_time) / 2.0))
+            for index, points in enumerate(paths):
+                pygame.draw.lines(overlay, (*palette.DARK_BLOOD, int(220 * strength)), False, points, 3)
+                pygame.draw.lines(overlay, (*palette.BLOOD_RED, int(255 * strength)), False, points, 1)
+                travel = (self.bleed_time * 1.6 + index * 0.7) % (len(points) - 1)
+                segment = int(travel)
+                point = pygame.Vector2(points[segment]).lerp(points[segment + 1], travel - segment)
+                pygame.draw.circle(overlay, (177, 39, 34, int(230 * strength)), (round(point.x), round(point.y)), 1)
 
-    def _draw_large_background_overlay(self, surface: pygame.Surface, trunk: pygame.Rect) -> None:
-        """叠加规则反馈，让大月桂在流血状态更明显。"""
-        if not self.bleeding:
-            return
-
-        progress = min(1.0, self.bleed_time / self.BLEED_DURATION)
-        drip = int(self.bleed_time * 14) % 34
-        pulse = int((math.sin(self.bleed_time * 5) + 1) * 4)
-        repair = int(progress * 16)
-        wounds = (
-            (trunk.x - 4, trunk.y - 18, 2, 42),
-            (trunk.x + 7, trunk.y - 8, 2, 48),
-            (trunk.x + 20, trunk.y + 3, 2, 34),
-        )
-        for index, (x, y, width, height) in enumerate(wounds):
-            visible_height = max(8, height - repair - index * 2)
-            color = palette.BLOOD_RED if index % 2 else palette.DARK_BLOOD
-            draw_filled_rect(surface, (x, y, width, visible_height), color)
-            draw_filled_rect(surface, (x, y + 18 + drip // 2, width, 2), palette.BLOOD_RED)
-
-        pool_width = 42 + pulse - repair
-        draw_filled_rect(surface, (trunk.x - 8, trunk.bottom - 3, max(22, pool_width), 2), palette.DARK_BLOOD)
-        draw_filled_rect(surface, (trunk.x + 8, trunk.bottom - 2, 10, 1), palette.BLOOD_RED)
-        scar_color = palette.HORROR_CYAN_GRAY if int(self.bleed_time * 4) % 2 else palette.PALE_MOON
-        pygame.draw.line(surface, scar_color, (trunk.x - 7, trunk.y - 20), (trunk.x + 25, trunk.y + 42), 1)
-        pygame.draw.line(surface, scar_color, (trunk.x + 31, trunk.y + 8), (trunk.x + 3, trunk.y + 72), 1)
+        # Preserve transparency: no detached blood, rectangular puddle, or stray twigs.
+        mask = sprite.copy()
+        mask.fill((255, 255, 255, 0), special_flags=pygame.BLEND_RGBA_MAX)
+        overlay.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        surface.blit(overlay, (0, 0))
 
     def set_bleeding(self, bleeding: bool = True) -> None:
         """切换 10 秒流血/自修复状态，后续由吴刚第 5 刀事件触发。"""

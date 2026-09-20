@@ -10,26 +10,37 @@ import pygame
 import config
 from utils import palette
 from utils.assets import load_image, load_sprite_grid
-from utils.font import render_text
+from utils.font import load_font, render_text
 from utils.pixel_art import draw_double_rect, draw_filled_rect, draw_line, draw_rect
 
 
 class SceneTransition:
-    """Moon Palace loading transition with a reveal pause before changing scenes."""
+    """Screen-only transition with a 5.2-second push and head-turn reveal."""
 
-    LOAD_DURATION = 1.45
-    # The reveal is intentionally a short snap, not a long presentation pose.
-    REVEAL_HOLD = 0.22
-    FOUND_PROGRESS = 0.98
+    # Match the locked K00-K12 storyboard: searching has room to breathe,
+    # the neck turn stays abrupt, and the final face gets a readable hold.
+    SEARCH_DURATION = 3.00
+    REVEAL_DURATION = 0.80
+    FINAL_HOLD_DURATION = 1.40
+    TOTAL_DURATION = SEARCH_DURATION + REVEAL_DURATION + FINAL_HOLD_DURATION
+    # Keep the older public names available to callers that use the transition
+    # as a loading gate. LOAD_DURATION now means the complete timeline, while
+    # REVEAL_HOLD remains the final-face hold duration.
+    LOAD_DURATION = TOTAL_DURATION
+    REVEAL_HOLD = FINAL_HOLD_DURATION
+    FOUND_PROGRESS = SEARCH_DURATION / TOTAL_DURATION
     SEARCH_FRAME_INDEX = 0
+    SEARCH_FRAME_START = SEARCH_FRAME_INDEX
+    SEARCH_FRAME_END = 11
+    SEARCH_START_ZOOM = 1.0
+    SEARCH_END_ZOOM = 1.12
     REVEAL_FRAME_START = 12
     REVEAL_FRAME_END = 23
-    REVEAL_MAX_ZOOM = 1.24
-    SEARCH_JITTER_SCALE = 0.35
+    REVEAL_MAX_ZOOM = 1.52
     MONITOR_SCREEN_RECT = pygame.Rect(115, 30, 251, 161)
     MONITOR_FRAME_RECT = pygame.Rect(115, 48, 251, 126)
     MONITOR_SOURCE_CROP = pygame.Rect(22, 2, 318, 177)
-    MONITOR_SHEET_PATH = "sprites/moonspace/sheets/scene_transition_monitor_24frames.png"
+    MONITOR_SHEET_PATH = "sprites/moonspace/sheets/scene_transition_monitor_head_only_v2.png"
     MONITOR_FRAME_SIZE = (362, 181)
     MONITOR_GRID_SIZE = (6, 4)
     MONITOR_FRAME_COUNT = 24
@@ -38,11 +49,12 @@ class SceneTransition:
         self.active = False
         self.progress = 0.0
         self.caption = ""
-        self.found_message = "找到你了"
+        self.found_message = "找到你了！"
         self.reveal_started = False
         self.search_offset = 0
         self._elapsed = 0.0
         self._reveal_elapsed = 0.0
+        self._final_hold_elapsed = 0.0
         self._on_complete: Callable[[], None] | None = None
         self._on_found: Callable[[], None] | None = None
         self._found_called = False
@@ -62,38 +74,68 @@ class SceneTransition:
         self.search_offset = 0
         self._elapsed = 0.0
         self._reveal_elapsed = 0.0
+        self._final_hold_elapsed = 0.0
         self._on_complete = on_complete
         self._on_found = on_found
         self._found_called = False
         self._completed = False
 
     def update(self, dt: float) -> None:
-        """Advance loading progress, then hold on the screen-facing reveal."""
+        """Advance the search, head turn, and final-face hold timeline."""
         if not self.active:
             return
 
-        if not self.reveal_started:
-            self._elapsed = min(self.LOAD_DURATION, self._elapsed + dt)
-            self.progress = min(1.0, self._elapsed / self.LOAD_DURATION)
-            self.search_offset = int(round(3 * math.sin(self._elapsed * 15.0)))
-            if self.progress >= self.FOUND_PROGRESS:
+        remaining = max(0.0, float(dt))
+        if remaining <= 0.0:
+            return
+
+        # Consume a large dt across phase boundaries as well. This keeps the
+        # transition duration correct in tests and when a frame is delayed.
+        while remaining > 0.0:
+            if not self.reveal_started:
+                phase_remaining = max(0.0, self.SEARCH_DURATION - self._elapsed)
+                step = min(remaining, phase_remaining)
+                self._elapsed += step
+                self.progress = min(1.0, self._elapsed / self.TOTAL_DURATION)
+                self.search_offset = int(round(3 * math.sin(self._elapsed * 15.0)))
+                remaining -= step
+                if self._elapsed + 1e-9 < self.SEARCH_DURATION:
+                    return
+
+                self._elapsed = self.SEARCH_DURATION
+                self.progress = self.FOUND_PROGRESS
                 self.reveal_started = True
                 self._call_found_once()
-            return
+                if remaining <= 0.0:
+                    return
 
-        if self.progress < 1.0:
-            self._elapsed = min(self.LOAD_DURATION, self._elapsed + dt)
-            self.progress = min(1.0, self._elapsed / self.LOAD_DURATION)
-            return
+            if self._reveal_elapsed < self.REVEAL_DURATION:
+                phase_remaining = self.REVEAL_DURATION - self._reveal_elapsed
+                step = min(remaining, phase_remaining)
+                self._reveal_elapsed += step
+                self._elapsed = self.SEARCH_DURATION + self._reveal_elapsed
+                self.progress = min(1.0, self._elapsed / self.TOTAL_DURATION)
+                remaining -= step
+                if self._reveal_elapsed + 1e-9 < self.REVEAL_DURATION:
+                    return
+                if remaining <= 0.0:
+                    return
 
-        self._reveal_elapsed += dt
-        if self._reveal_elapsed < self.REVEAL_HOLD:
-            return
+            if self._final_hold_elapsed < self.FINAL_HOLD_DURATION:
+                phase_remaining = self.FINAL_HOLD_DURATION - self._final_hold_elapsed
+                step = min(remaining, phase_remaining)
+                self._final_hold_elapsed += step
+                self._elapsed = self.SEARCH_DURATION + self.REVEAL_DURATION + self._final_hold_elapsed
+                self.progress = min(1.0, self._elapsed / self.TOTAL_DURATION)
+                remaining -= step
+                if self._final_hold_elapsed + 1e-9 < self.FINAL_HOLD_DURATION:
+                    return
 
-        self.active = False
-        if not self._completed and self._on_complete is not None:
-            self._completed = True
-            self._on_complete()
+            self.active = False
+            if not self._completed and self._on_complete is not None:
+                self._completed = True
+                self._on_complete()
+            return
 
     def _call_found_once(self) -> None:
         if self._found_called:
@@ -117,7 +159,9 @@ class SceneTransition:
         monitor_sequence_drawn = self._draw_monitor_sequence(surface)
         self._draw_scanlines(surface)
         self._draw_progress(surface)
-        if not monitor_sequence_drawn:
+        if monitor_sequence_drawn and self._monitor_frame_index() >= self.REVEAL_FRAME_END - 1:
+            self._draw_found_message(surface)
+        elif not monitor_sequence_drawn:
             if self.reveal_started:
                 self._draw_found_you(surface)
             else:
@@ -144,32 +188,39 @@ class SceneTransition:
         draw_filled_rect(surface, self.MONITOR_SCREEN_RECT, palette.BLACK)
         previous_clip = surface.get_clip()
         surface.set_clip(self.MONITOR_SCREEN_RECT)
-        search_jitter = 0
-        if not self.reveal_started:
-            search_jitter = round(self.search_offset * self.SEARCH_JITTER_SCALE)
-        frame_center = (self.MONITOR_FRAME_RECT.centerx + search_jitter, self.MONITOR_FRAME_RECT.centery)
+        # Keep the scene and body anchor fixed. Head movement comes from the
+        # authored atlas frames, not from translating the whole screen.
+        frame_center = self.MONITOR_FRAME_RECT.center
         surface.blit(frame, frame.get_rect(center=frame_center))
         surface.set_clip(previous_clip)
         return True
 
     def _monitor_zoom(self) -> float:
-        """Return the camera scale used for the sudden face-rush."""
+        """Return the continuous slow push plus the final face-rush scale."""
         if not self.reveal_started:
-            return 1.0
-        reveal_progress = min(1.0, self._reveal_elapsed / max(self.REVEAL_HOLD, 0.001))
-        # The camera rushes in early; the final two frames only flash by.
+            search_progress = min(1.0, self.progress / max(self.FOUND_PROGRESS, 0.001))
+            return self.SEARCH_START_ZOOM + (
+                self.SEARCH_END_ZOOM - self.SEARCH_START_ZOOM
+            ) * search_progress
+        reveal_progress = min(1.0, self._reveal_elapsed / max(self.REVEAL_DURATION, 0.001))
+        # Keep the slow-push endpoint through the first reveal tick, then rush
+        # toward the close-up as the head completes its turn.
         zoom_progress = reveal_progress**0.55
-        return 1.0 + (self.REVEAL_MAX_ZOOM - 1.0) * zoom_progress
+        return self.SEARCH_END_ZOOM + (
+            self.REVEAL_MAX_ZOOM - self.SEARCH_END_ZOOM
+        ) * zoom_progress
 
     def _monitor_frame_index(self) -> int:
-        """将稳定寻找帧映射到突脸序列，并把最后两帧留给发现提示。"""
+        """Map authored search frames into the final turn-and-reveal sequence."""
         if not self.reveal_started:
-            # The source atlas has noticeable AI pose drift during the search.
-            # Keep one silhouette and anchor, then reserve all shape changes
-            # for the deliberate turn-and-rush reveal.
-            return self.SEARCH_FRAME_INDEX
+            search_progress = min(1.0, self.progress / max(self.FOUND_PROGRESS, 0.001))
+            search_span = self.SEARCH_FRAME_END - self.SEARCH_FRAME_START + 1
+            return min(
+                self.SEARCH_FRAME_END,
+                self.SEARCH_FRAME_START + int(search_progress * search_span),
+            )
 
-        reveal_progress = min(1.0, self._reveal_elapsed / max(self.REVEAL_HOLD, 0.001))
+        reveal_progress = min(1.0, self._reveal_elapsed / max(self.REVEAL_DURATION, 0.001))
         reveal_span = self.REVEAL_FRAME_END - self.REVEAL_FRAME_START + 1
         return min(
             self.REVEAL_FRAME_END,
@@ -204,12 +255,31 @@ class SceneTransition:
 
         render_text(surface, self.caption, panel.x + 12, panel.y - 16, 11, palette.PALE_MOON)
 
+    def _draw_found_message(self, surface: pygame.Surface) -> None:
+        """Cover any atlas lettering and render the exact final title."""
+        band = pygame.Rect(
+            self.MONITOR_SCREEN_RECT.x,
+            self.MONITOR_SCREEN_RECT.bottom - 44,
+            self.MONITOR_SCREEN_RECT.width,
+            44,
+        )
+        overlay = pygame.Surface(band.size, pygame.SRCALPHA)
+        overlay.fill((*palette.BLACK, 255))
+        surface.blit(overlay, band.topleft)
+
+        font = load_font(18)
+        text_width, text_height = font.size(self.found_message)
+        x = band.centerx - text_width // 2
+        y = band.centery - text_height // 2
+        render_text(surface, self.found_message, x, y, 18, palette.BLOOD_RED)
+
     def _draw_searching_shadow(self, surface: pygame.Surface) -> None:
-        """Before 98%, make the screen figure search by twitching its head."""
-        cx, cy = config.SCREEN_WIDTH // 2 + self.search_offset, config.SCREEN_HEIGHT // 2 + 2
-        draw_filled_rect(surface, (cx - 8, cy - 17, 16, 11), palette.BLACK)
-        draw_filled_rect(surface, (cx - 10 + self.search_offset, cy - 20, 8, 2), palette.DEEP_BLUE)
-        draw_filled_rect(surface, (cx + 4 + self.search_offset, cy - 19, 7, 2), palette.DEEP_BLUE)
+        """Before 98%, keep the fallback body fixed while the head searches."""
+        cx, cy = config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 2 + 2
+        head_offset = int(round(self.search_offset * 0.5))
+        draw_filled_rect(surface, (cx - 8 + head_offset, cy - 17, 16, 11), palette.BLACK)
+        draw_filled_rect(surface, (cx - 10 + head_offset, cy - 20, 8, 2), palette.DEEP_BLUE)
+        draw_filled_rect(surface, (cx + 4 + head_offset, cy - 19, 7, 2), palette.DEEP_BLUE)
         draw_line(surface, (cx - 13, cy - 4), (cx + 13, cy - 4), palette.DARK_BLOOD)
 
     def _draw_found_you(self, surface: pygame.Surface) -> None:

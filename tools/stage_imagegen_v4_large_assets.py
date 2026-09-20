@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from collections import deque
 from pathlib import Path
 
@@ -28,6 +29,34 @@ WUGANG_ATLAS = CANDIDATE_DIR / "candidate_wugang_16frames_horror_v7.png"
 YUTU_ATLAS = CANDIDATE_DIR / "candidate_yutu_16frames_horror_v7.png"
 MAIN_MENU = CANDIDATE_DIR / "candidate_main_menu_scene_horror_v3.png"
 OPENING_STORYBOARD = CANDIDATE_DIR / "candidate_opening_cg_storyboard_horror_v3.png"
+
+
+def ensure_output_directory() -> None:
+    """Create the complete temporary asset tree before an image is written."""
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def save_surface(surface: pygame.Surface, destination: Path) -> None:
+    """Write an image through a sibling temporary file before replacing it.
+
+    Pygame's Windows PNG writer can fail when asked to overwrite a file after
+    the display/mixer has been torn down and initialized again.  Staging is
+    deliberately repeatable, so keep the destination out of the writer's
+    direct overwrite path and replace it only after the new image is complete.
+    """
+    ensure_output_directory()
+    file_descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{destination.stem}-",
+        suffix=destination.suffix,
+        dir=OUT_DIR,
+    )
+    os.close(file_descriptor)
+    temporary_path = Path(temporary_name)
+    try:
+        pygame.image.save(surface, str(temporary_path))
+        os.replace(temporary_path, destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def is_green_key(color: tuple[int, int, int, int]) -> bool:
@@ -103,7 +132,7 @@ def save_sheet(source: pygame.Surface, rects: list[pygame.Rect], frame_size: tup
     sheet = pygame.Surface((frame_size[0] * len(rects), frame_size[1]), pygame.SRCALPHA)
     for index, rect in enumerate(rects):
         sheet.blit(fit_sprite(source, rect, frame_size), (index * frame_size[0], 0))
-    pygame.image.save(sheet, OUT_DIR / filename)
+    save_surface(sheet, OUT_DIR / filename)
 
 
 def save_grid_sheet(
@@ -117,7 +146,7 @@ def save_grid_sheet(
     for row_index, row in enumerate(rows):
         for col_index, rect in enumerate(row):
             sheet.blit(fit_sprite(source, rect, frame_size), (col_index * frame_size[0], row_index * frame_size[1]))
-    pygame.image.save(sheet, OUT_DIR / filename)
+    save_surface(sheet, OUT_DIR / filename)
 
 
 def pad_frames(rects: list[pygame.Rect], expected_count: int) -> list[pygame.Rect]:
@@ -155,9 +184,9 @@ def grid_frames(path: Path, expected_rows: int, expected_cols: int) -> list[list
 
 
 def save_scaled(path: Path, size: tuple[int, int], filename: str) -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    ensure_output_directory()
     source = pygame.image.load(str(path)).convert_alpha()
-    pygame.image.save(pygame.transform.scale(source, size), OUT_DIR / filename)
+    save_surface(pygame.transform.scale(source, size), OUT_DIR / filename)
 
 
 def panel_rects(source: pygame.Surface) -> dict[str, pygame.Rect]:
@@ -174,6 +203,7 @@ def panel_rects(source: pygame.Surface) -> dict[str, pygame.Rect]:
 
 
 def stage_backgrounds() -> None:
+    ensure_output_directory()
     save_scaled(BACKGROUND, WORLD_SIZE, "courtyard_bg_large.png")
     save_scaled(MAIN_MENU, SCREEN_SIZE, "main_menu_bg.png")
 
@@ -187,10 +217,11 @@ def stage_backgrounds() -> None:
     ):
         crop = pygame.Surface(panels[key].size, pygame.SRCALPHA)
         crop.blit(storyboard, (0, 0), panels[key])
-        pygame.image.save(pygame.transform.scale(crop, SCREEN_SIZE), OUT_DIR / filename)
+        save_surface(pygame.transform.scale(crop, SCREEN_SIZE), OUT_DIR / filename)
 
 
 def stage_character_sheets() -> None:
+    ensure_output_directory()
     player_atlas = pygame.image.load(str(PLAYER_ATLAS)).convert_alpha()
     player_rows = grid_frames(PLAYER_ATLAS, 4, 4)
 
@@ -230,7 +261,7 @@ def main() -> None:
 
     pygame.init()
     pygame.display.set_mode((1, 1))
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    ensure_output_directory()
     stage_backgrounds()
     stage_character_sheets()
     validate_outputs()

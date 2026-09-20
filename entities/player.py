@@ -36,6 +36,7 @@ class Player:
         world_size: tuple[int, int] = (config.MAP_WIDTH, config.MAP_HEIGHT),
     ) -> None:
         """读取输入、更新动画并执行按轴分离的矩形碰撞。"""
+        dt = max(0.0, dt)
         if self._interact_timer > 0:
             self._interact_timer = max(0.0, self._interact_timer - dt)
 
@@ -57,6 +58,8 @@ class Player:
 
         self._move_and_collide(dt, collision_rects)
         self._clamp_to_world(world_size)
+        if not self.is_moving() and self._interact_timer <= 0:
+            self.anim_state = "idle"
         self._update_animation(dt)
 
     def draw(
@@ -146,61 +149,80 @@ class Player:
         collision_rects: list[pygame.Rect] | tuple[pygame.Rect, ...],
     ) -> None:
         """按 X/Y 轴分离移动，并用扫掠检测避免低帧率时穿墙。"""
-        old_rect = self.rect.copy()
-        self.position.x += self.velocity.x * dt
-        self.rect.x = round(self.position.x)
-        self._resolve_axis_collision(collision_rects, axis="x", old_rect=old_rect)
-        self.position.x = float(self.rect.x)
+        for axis in ("x", "y"):
+            old_rect = self.get_collision_rect()
+            intended = getattr(self.position, axis) + getattr(self.velocity, axis) * dt
+            setattr(self.position, axis, intended)
+            setattr(self.rect, axis, round(intended))
+            blocked = self._resolve_axis_collision(collision_rects, axis, old_rect)
+            resolved = getattr(self.rect, axis)
+            if blocked or resolved != round(intended):
+                setattr(self.position, axis, float(resolved))
+                setattr(self.velocity, axis, 0.0)
 
-        old_rect = self.rect.copy()
-        self.position.y += self.velocity.y * dt
-        self.rect.y = round(self.position.y)
-        self._resolve_axis_collision(collision_rects, axis="y", old_rect=old_rect)
-        self.position.y = float(self.rect.y)
+    def get_collision_rect(self) -> pygame.Rect:
+        """脚底占地与显示/存档矩形分离，头身可以遮挡背景物体。"""
+        footprint = pygame.Rect(0, 0, self.rect.width, 10)
+        footprint.midbottom = self.rect.midbottom
+        return footprint
 
     def _resolve_axis_collision(
         self,
         collision_rects: list[pygame.Rect] | tuple[pygame.Rect, ...],
         axis: str,
         old_rect: pygame.Rect,
-    ) -> None:
+    ) -> bool:
         """解决当前轴碰撞；即使一步跨过障碍，也会停在障碍边缘。"""
+        blocked = False
+        footprint = self.get_collision_rect()
         for obstacle in collision_rects:
             if axis == "x":
-                overlaps_y = self.rect.bottom > obstacle.top and self.rect.top < obstacle.bottom
+                overlaps_y = footprint.bottom > obstacle.top and footprint.top < obstacle.bottom
                 if not overlaps_y:
                     continue
-                if self.velocity.x > 0 and old_rect.right <= obstacle.left <= self.rect.right:
-                    self.rect.right = obstacle.left
-                elif self.velocity.x < 0 and self.rect.left <= obstacle.right <= old_rect.left:
-                    self.rect.left = obstacle.right
-                elif self.rect.colliderect(obstacle):
+                if self.velocity.x > 0 and old_rect.right <= obstacle.left <= footprint.right:
+                    footprint.right = obstacle.left
+                    blocked = True
+                elif self.velocity.x < 0 and footprint.left <= obstacle.right <= old_rect.left:
+                    footprint.left = obstacle.right
+                    blocked = True
+                elif footprint.colliderect(obstacle):
                     if self.velocity.x > 0:
-                        self.rect.right = obstacle.left
+                        footprint.right = obstacle.left
+                        blocked = True
                     elif self.velocity.x < 0:
-                        self.rect.left = obstacle.right
+                        footprint.left = obstacle.right
+                        blocked = True
             else:
-                overlaps_x = self.rect.right > obstacle.left and self.rect.left < obstacle.right
+                overlaps_x = footprint.right > obstacle.left and footprint.left < obstacle.right
                 if not overlaps_x:
                     continue
-                if self.velocity.y > 0 and old_rect.bottom <= obstacle.top <= self.rect.bottom:
-                    self.rect.bottom = obstacle.top
-                elif self.velocity.y < 0 and self.rect.top <= obstacle.bottom <= old_rect.top:
-                    self.rect.top = obstacle.bottom
-                elif self.rect.colliderect(obstacle):
+                if self.velocity.y > 0 and old_rect.bottom <= obstacle.top <= footprint.bottom:
+                    footprint.bottom = obstacle.top
+                    blocked = True
+                elif self.velocity.y < 0 and footprint.top <= obstacle.bottom <= old_rect.top:
+                    footprint.top = obstacle.bottom
+                    blocked = True
+                elif footprint.colliderect(obstacle):
                     if self.velocity.y > 0:
-                        self.rect.bottom = obstacle.top
+                        footprint.bottom = obstacle.top
+                        blocked = True
                     elif self.velocity.y < 0:
-                        self.rect.top = obstacle.bottom
+                        footprint.top = obstacle.bottom
+                        blocked = True
+
+        self.rect.midbottom = footprint.midbottom
+        return blocked
 
     def _clamp_to_world(self, world_size: tuple[int, int] = (config.MAP_WIDTH, config.MAP_HEIGHT)) -> None:
         """限制玩家不离开地图边界。"""
-        world_width, world_height = world_size
-        self.rect.left = max(0, self.rect.left)
-        self.rect.top = max(0, self.rect.top)
-        self.rect.right = min(world_width, self.rect.right)
-        self.rect.bottom = min(world_height, self.rect.bottom)
-        self.position.xy = self.rect.topleft
+        for axis, limit in (("x", world_size[0] - self.rect.width), ("y", world_size[1] - self.rect.height)):
+            value = getattr(self.position, axis)
+            clamped = max(0.0, min(float(limit), value))
+            if clamped != value:
+                setattr(self.position, axis, clamped)
+                setattr(self.velocity, axis, 0.0)
+            setattr(self.rect, axis, round(clamped))
 
     def _update_animation(self, dt: float) -> None:
         """根据动画状态推进帧号。"""
@@ -286,14 +308,9 @@ class Player:
             col = 1
         cache_key = (facing, col)
         if cache_key not in self._normalized_sprite_cache:
-            # Normalize against the complete sheet.  Some direction rows have
-            # shorter source frames; using one global visible height prevents
-            # the hero from shrinking when walking or changing direction.
-            target_height = max(
-                frame.get_bounding_rect(min_alpha=1).height
-                for sprite_row in rows
-                for frame in sprite_row
-            )
+            # The authored canvas may change; the on-screen body remains 60px
+            # high with a stable foot anchor in every direction and walk phase.
+            target_height = 60
             normalized_row = self._normalize_sprite_row(rows[row], target_height)
             self._normalized_sprite_cache.update(
                 {(facing, index): frame for index, frame in enumerate(normalized_row)}

@@ -1,6 +1,7 @@
 """玩家实体测试。"""
 
 import pygame
+import pytest
 
 import config
 from entities.player import Player
@@ -147,3 +148,56 @@ def test_player_walk_frames_keep_visible_size_and_foot_anchor_stable():
 
         assert {bounds.height for bounds in bounds_by_frame} == {60}
         assert {bounds.bottom for bounds in bounds_by_frame} == {62}
+
+
+@pytest.mark.parametrize("fps", [30, 60, 144, 240])
+@pytest.mark.parametrize("running", [False, True])
+def test_movement_preserves_subpixels_across_frame_rates(fps, running):
+    player = Player(100, 100)
+    actions = {config.ACTION_MOVE_RIGHT}
+    if running:
+        actions.add(config.ACTION_RUN)
+    for _ in range(fps):
+        player.update(1 / fps, FakeInput(actions), [])
+    speed = config.PLAYER_RUN_SPEED if running else config.PLAYER_WALK_SPEED
+    assert player.position.x == pytest.approx(100 + speed)
+    assert player.rect.x == 100 + speed
+
+
+def test_head_can_overlap_scenery_while_feet_pass_below_it():
+    player = Player(10, 20)
+    obstacle = pygame.Rect(40, 10, 16, 20)
+    player.update(0.5, FakeInput({config.ACTION_MOVE_RIGHT}), [obstacle])
+    assert player.rect.x == 50
+
+
+@pytest.mark.parametrize("dt", [0.1, 1 / 240])
+def test_pushing_wall_is_not_actual_movement(dt):
+    player = Player(24, 20)
+    player.update(dt, FakeInput({config.ACTION_MOVE_RIGHT}), [pygame.Rect(40, 0, 16, 100)])
+    assert not player.is_moving()
+    assert player.anim_state == "idle"
+
+
+def test_subpixel_movement_cannot_accumulate_outside_world_boundary():
+    player = Player(944, 20)
+    player.update(1 / 240, FakeInput({config.ACTION_MOVE_RIGHT}), [])
+    assert player.position.x == 944
+    assert not player.is_moving()
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_sweep_stops_at_nearest_thin_wall_regardless_of_order(reverse):
+    player = Player(10, 20)
+    walls = [pygame.Rect(80, 0, 1, 100), pygame.Rect(40, 0, 1, 100)]
+    player.update(2.0, FakeInput({config.ACTION_MOVE_RIGHT}), walls[::-1] if reverse else walls)
+    assert player.rect.right == 40
+
+
+def test_upward_collision_uses_feet_and_slides_along_wall():
+    player = Player(50, 40)
+    wall = pygame.Rect(0, 10, 200, 20)
+    player.update(1.0, FakeInput({config.ACTION_MOVE_UP, config.ACTION_MOVE_RIGHT}), [wall])
+    assert player.get_collision_rect().top == wall.bottom
+    assert player.rect.x > 50
+    assert player.is_moving()

@@ -32,6 +32,9 @@ class BrokenJadeView:
     def update(self, input_manager) -> None:
         if not self.active:
             return
+        if input_manager.was_pressed(config.ACTION_QUIT):
+            self.active = False
+            return
         if input_manager.was_pressed(config.ACTION_OPEN_RULE_BOOK):
             self.active = False
             return

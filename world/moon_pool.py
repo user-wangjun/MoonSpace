@@ -32,6 +32,7 @@ class MoonPool:
         self.reflection_rect = self.visual_rect.inflate(*self.REFLECTION_INFLATE)
         self._time = 0.0
         self.reflection_flash_timer = 0.0
+        self.gaze_progress = 0.0
 
     def update(self, dt: float) -> None:
         """推进水面波纹计时。"""
@@ -114,6 +115,13 @@ class MoonPool:
         if show_reflection and reflection_sprite is not None:
             anomalous = self.reflection_flash_timer > 0
             sprite = anomaly_sprite if anomalous and anomaly_sprite is not None else reflection_sprite
+            # 先让水中身影悄悄转向观察者，真正违规后才显露红眼。
+            anticipation = max(0.0, min(1.0, (self.gaze_progress - 0.45) / 0.45))
+            if not anomalous and anticipation > 0 and anomaly_sprite is not None:
+                sprite = reflection_sprite.copy()
+                turned = pygame.transform.smoothscale(anomaly_sprite, sprite.get_size())
+                turned.set_alpha(round(255 * anticipation))
+                sprite.blit(turned, (0, 0))
             self._draw_player_reflection(
                 feedback,
                 inner,
@@ -123,10 +131,11 @@ class MoonPool:
             )
 
         phase = int(self._time * 5) % 6
+        ripple_alpha = round(62 * (1.0 - 0.85 * self.gaze_progress))
         for i, width in enumerate((56, 42, 64)):
             x = inner.centerx - width // 2 + ((phase + i * 2) % 5) - 2
             y = inner.centery - 18 + i * 17
-            draw_filled_rect(feedback, (x, y, width, 1), (*palette.HORROR_CYAN_GRAY, 62))
+            draw_filled_rect(feedback, (x, y, width, 1), (*palette.HORROR_CYAN_GRAY, ripple_alpha))
         surface.blit(feedback, visual_rect.topleft)
 
     def _draw_pollution_overlay(self, feedback: pygame.Surface, water_rect: pygame.Rect) -> None:

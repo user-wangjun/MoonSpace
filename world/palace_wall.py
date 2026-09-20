@@ -116,7 +116,7 @@ class PalaceWall:
         self.horror_level = max(0, min(3, level))
 
     def set_gate_open(self, is_open: bool) -> None:
-        """根据吴刚与玉兔职司检查进度切换宫门状态。"""
+        """根据伐桂、捣药、修月三项检查进度切换宫门状态。"""
         self.gate_open = bool(is_open)
 
     def get_collision_rect(self) -> pygame.Rect:

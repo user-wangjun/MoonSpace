@@ -55,13 +55,13 @@ def choose_current_dialog_option(game, index=0):
 
 
 def finish_scene_transition(game):
-    """推进一次完整的场景转场，保留首帧 reveal 停顿语义。"""
+    """推进一次完整的 5.2 秒场景转场。"""
     assert game.mode == game.MODE_TRANSITION
-    game._update_transition(
-        game.scene_transition.LOAD_DURATION + game.scene_transition.REVEAL_HOLD + 0.1
-    )
+    game._update_transition(game.scene_transition.SEARCH_DURATION)
     assert game.mode == game.MODE_TRANSITION
-    game._update_transition(game.scene_transition.REVEAL_HOLD)
+    game._update_transition(game.scene_transition.REVEAL_DURATION)
+    assert game.mode == game.MODE_TRANSITION
+    game._update_transition(game.scene_transition.FINAL_HOLD_DURATION)
 
 
 def _guanghan_target_is_reachable(game, target: tuple[int, int]) -> bool:
@@ -202,7 +202,7 @@ def test_active_scene_transition_saves_its_target_scene():
     assert game._transition_target_scene is None
 
 
-def test_scene_transition_snapshot_uses_a_safe_spawn_for_the_target_scene():
+def test_scene_transition_does_not_save_but_places_player_at_safe_target_spawn():
     game = Game()
     game.save_manager = MemorySaveManager()
     game.current_slot_id = 1
@@ -214,14 +214,9 @@ def test_scene_transition_snapshot_uses_a_safe_spawn_for_the_target_scene():
 
     game._start_scene_transition(game.MODE_GUANGHAN, game._enter_guanghan, "进入广寒宫")
 
-    saved = game.save_manager.saved_payloads[-1]
-    hall_rect = pygame.Rect(0, 0, *config.PLAYER_SIZE)
-    hall_rect.midbottom = config.GUANGHAN_SOUTH_SPAWN
-    assert saved["scene"] == game.MODE_GUANGHAN
-    assert saved["player"] == {"x": hall_rect.x, "y": hall_rect.y, "facing": "up"}
+    assert game.save_manager.saved_payloads == []
 
-    game._update_transition(game.scene_transition.LOAD_DURATION + game.scene_transition.REVEAL_HOLD)
-    game._update_transition(game.scene_transition.REVEAL_HOLD)
+    finish_scene_transition(game)
     assert game.mode == game.MODE_GUANGHAN
     assert game.player.rect.midbottom == config.GUANGHAN_SOUTH_SPAWN
 
@@ -290,10 +285,7 @@ def test_home_gate_entry_marks_tutorial_done_and_enters_courtyard():
     assert game.scene_transition.active
     assert game.scene_transition.progress < 1.0
 
-    game._update_transition(game.scene_transition.LOAD_DURATION + game.scene_transition.REVEAL_HOLD + 0.1)
-    assert game.mode == game.MODE_TRANSITION
-
-    game._update_transition(game.scene_transition.REVEAL_HOLD)
+    finish_scene_transition(game)
 
     assert game.mode == game.MODE_PLAYING
     assert game.current_save_data["home_tutorial_done"] is True
@@ -302,7 +294,7 @@ def test_home_gate_entry_marks_tutorial_done_and_enters_courtyard():
     assert game.player.rect.colliderect(pygame.Rect(0, 0, 1, 1)) is False
 
 
-def test_home_gate_entry_saves_completion_before_transition_finishes():
+def test_home_gate_entry_saves_completion_only_after_arrival():
     game = Game()
     game.save_manager = MemorySaveManager()
     game.current_slot_id = 1
@@ -318,6 +310,9 @@ def test_home_gate_entry_saves_completion_before_transition_finishes():
     game._update_home(0.016)
 
     assert game.mode == game.MODE_TRANSITION
+    assert game.current_save_data["home_tutorial_done"] is False
+    assert game.save_manager.saved_payloads == []
+    finish_scene_transition(game)
     assert game.current_save_data["home_tutorial_done"] is True
     assert game.current_save_data["player"]["x"] == config.PLAYER_START_X
     assert game.current_save_data["scene"] == game.MODE_PLAYING
@@ -350,6 +345,7 @@ def test_game_applies_and_collects_mainline_progress():
     assert game.mainline["return_countdown_active"] is True
 
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.mainline["ending"] = "he_return_earth"
     collected = game._collect_save_data()
 
@@ -564,9 +560,10 @@ def test_yutu_front_interaction_is_violation_not_pollution():
     assert game.mainline["yutu_checked"] is False
     assert game.mainline["yutu_polluted"] is False
     assert game.game_state.violation_count == 1
-    assert game.save_manager.saved_payloads[-1]["violation_count"] == 1
+    assert game.save_manager.saved_payloads == []
     assert game.dialog_box.active is True
     assert any("绕到身后" in line for line in game.dialog_box.lines)
+
 
 
 def test_yutu_back_arc_does_not_trigger_eye_contact_rule():
@@ -613,6 +610,7 @@ def test_guanghan_gate_enters_inner_hall_after_office_checks():
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.player.rect.center = game.palace_entry_rect.center
     game.player.position.xy = game.player.rect.topleft
     game.input_manager._pressed_once.add(config.ACTION_INTERACT)
@@ -621,11 +619,10 @@ def test_guanghan_gate_enters_inner_hall_after_office_checks():
 
     finish_scene_transition(game)
     assert game.mode == game.MODE_GUANGHAN
-    assert game.save_manager.saved_payloads[-1]["mainline"]["wugang_checked"] is True
-    assert game.save_manager.saved_payloads[-1]["mainline"]["yutu_checked"] is True
+    assert game.save_manager.saved_payloads == []
 
 
-def test_guanghan_gate_visual_opens_only_after_both_office_checks():
+def test_guanghan_gate_visual_opens_only_after_all_office_checks():
     game = Game()
 
     game._draw_playing()
@@ -636,6 +633,9 @@ def test_guanghan_gate_visual_opens_only_after_both_office_checks():
     assert game.palace_wall.gate_open is False
 
     game.mainline["yutu_checked"] = True
+    game._draw_playing()
+    assert game.palace_wall.gate_open is False
+    game.mainline["repair_checked"] = True
     game._draw_playing()
     assert game.palace_wall.gate_open is True
 
@@ -699,6 +699,7 @@ def test_guanghan_normal_report_starts_countdown_without_pollution():
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.mainline["wugang_polluted"] = False
     game.mainline["yutu_polluted"] = False
     game.envoy_register.apply_save_data({"name": "来使", "registered": True})
@@ -720,7 +721,7 @@ def test_guanghan_normal_report_starts_countdown_without_pollution():
     assert game.mainline["report_completed"] is True
     assert game.mainline["return_countdown_active"] is True
     assert game.mainline["return_countdown_remaining"] == 60.0
-    assert game.save_manager.saved_payloads[-1]["mainline"]["report_completed"] is True
+    assert game.save_manager.saved_payloads == []  # handoff dialogue not yet complete
     assert game.report_staging_active is True
     assert game.dialog_box.active is False
 
@@ -736,6 +737,7 @@ def test_guanghan_report_does_not_require_personal_name_or_registration():
     game.mode = game.MODE_GUANGHAN
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.player.rect.center = game.guanghan_report_rect.center
     game.player.position.xy = game.player.rect.topleft
     game.input_manager._pressed_once.add(config.ACTION_INTERACT)
@@ -862,7 +864,7 @@ def test_guanghan_countdown_zero_triggers_change_ending():
     assert game.mainline["return_countdown_active"] is False
     assert game.mainline["return_countdown_remaining"] == 0.0
     assert game.mainline["ending"] == "be_change"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["ending"] == "be_change"
+    assert game.save_manager.saved_payloads == []  # failure never becomes a checkpoint
     assert game.mode == game.MODE_ENDING_CG
     assert game.ending_cg.active is True
     assert game.ending_cg.ending_id == "be_change"
@@ -959,6 +961,7 @@ def test_clean_route_reports_without_name_leaves_once_and_returns_to_altar_he():
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
 
     game.player.rect.center = game.palace_entry_rect.center
     game.player.position.xy = game.player.rect.topleft
@@ -1018,6 +1021,7 @@ def test_timely_departure_blocks_returning_to_guanghan_wait():
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.mainline["report_completed"] = True
     game.mainline["return_departed_on_time"] = True
     game.player.rect.center = game.palace_entry_rect.center
@@ -1057,6 +1061,7 @@ def test_guanghan_wugang_pollution_starts_pool_fake_report():
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.mainline["wugang_polluted"] = True
     game.mainline["yutu_polluted"] = False
     game.envoy_register.apply_save_data({"name": "来使", "registered": True})
@@ -1075,7 +1080,7 @@ def test_guanghan_wugang_pollution_starts_pool_fake_report():
     assert game.mainline["report_completed"] is False
     assert game.mainline["return_countdown_active"] is False
     assert game.mainline["pending_pool_ending"] == "be_wugang"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["pending_pool_ending"] == "be_wugang"
+    assert game.save_manager.saved_payloads == []  # report is still in progress
     assert game.report_staging_active is True
     assert game.dialog_box.active is False
 
@@ -1094,6 +1099,7 @@ def test_guanghan_yutu_pollution_starts_pool_fake_report():
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.mainline["wugang_polluted"] = False
     game.mainline["yutu_polluted"] = True
     game.envoy_register.apply_save_data({"name": "来使", "registered": True})
@@ -1112,7 +1118,7 @@ def test_guanghan_yutu_pollution_starts_pool_fake_report():
     assert game.mainline["report_completed"] is False
     assert game.mainline["return_countdown_active"] is False
     assert game.mainline["pending_pool_ending"] == "be_yutu"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["pending_pool_ending"] == "be_yutu"
+    assert game.save_manager.saved_payloads == []  # report is still in progress
     assert game.report_staging_active is True
     assert game.dialog_box.active is False
 
@@ -1131,6 +1137,7 @@ def test_guanghan_double_pollution_sets_laurel_pool_ending():
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.mainline["wugang_polluted"] = True
     game.mainline["yutu_polluted"] = True
     game.envoy_register.apply_save_data({"name": "来使", "registered": True})
@@ -1149,7 +1156,7 @@ def test_guanghan_double_pollution_sets_laurel_pool_ending():
     assert game.mainline["report_completed"] is False
     assert game.mainline["return_countdown_active"] is False
     assert game.mainline["pending_pool_ending"] == "be_double"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["pending_pool_ending"] == "be_double"
+    assert game.save_manager.saved_payloads == []  # report is still in progress
     assert game.report_staging_active is True
     assert game.dialog_box.active is False
 
@@ -1191,7 +1198,7 @@ def test_guanghan_pending_wugang_pool_ending_waits_for_leave_input():
 
     assert game.mainline["pending_pool_ending"] == ""
     assert game.mainline["ending"] == "be_wugang"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["ending"] == "be_wugang"
+    assert game.save_manager.saved_payloads == []  # failure never becomes a checkpoint
     assert game.mode == game.MODE_ENDING_CG
     assert game.ending_cg.active is True
     assert game.ending_cg.ending_id == "be_wugang"
@@ -1224,7 +1231,7 @@ def test_guanghan_pending_yutu_pool_ending_triggers_at_courtyard_pool():
 
     assert game.mainline["pending_pool_ending"] == ""
     assert game.mainline["ending"] == "be_yutu"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["ending"] == "be_yutu"
+    assert game.save_manager.saved_payloads == []  # failure never becomes a checkpoint
     assert game.mode == game.MODE_ENDING_CG
     assert game.ending_cg.active is True
     assert game.ending_cg.ending_id == "be_yutu"
@@ -1257,14 +1264,14 @@ def test_guanghan_pending_double_pool_ending_triggers_laurel_consumption_at_pool
 
     assert game.mainline["pending_pool_ending"] == ""
     assert game.mainline["ending"] == "be_double"
-    assert game.save_manager.saved_payloads[-1]["mainline"]["ending"] == "be_double"
+    assert game.save_manager.saved_payloads == []  # failure never becomes a checkpoint
     assert game.mode == game.MODE_ENDING_CG
     assert game.ending_cg.active is True
     assert game.ending_cg.ending_id == "be_double"
     assert game.dialog_box.active is False
 
 
-def test_escape_opens_save_exit_confirmation_and_autosaves():
+def test_escape_opens_pause_menu_without_autosaving():
     game = Game()
     game.save_manager = MemorySaveManager()
     game.current_slot_id = 1
@@ -1277,10 +1284,10 @@ def test_escape_opens_save_exit_confirmation_and_autosaves():
 
     game._update_playing(0.016)
 
-    assert game.exit_confirm_open
+    assert game.mode == game.MODE_PAUSE
     assert game.running is True
-    assert game.save_manager.saved_payloads[-1]["player"]["x"] == 222
-    assert game.save_manager.saved_payloads[-1]["player"]["y"] == 333
+    assert game.save_manager.saved_payloads == []
+    assert game.player.rect.topleft == (222, 333)
 
 
 def test_loading_dead_save_restores_death_screen_and_horror_state():
@@ -1296,7 +1303,7 @@ def test_loading_dead_save_restores_death_screen_and_horror_state():
     assert game.distortion.horror_intensity == 0.8
 
 
-def test_death_restart_keeps_rules_and_saves_clean_violation_count():
+def test_legacy_dead_save_restart_keeps_rules_without_writing_another_checkpoint():
     game = Game()
     game.save_manager = MemorySaveManager()
     game.current_slot_id = 1
@@ -1311,29 +1318,29 @@ def test_death_restart_keeps_rules_and_saves_clean_violation_count():
 
     assert game.game_state.violation_count == 0
     assert game.game_state.known_rules == {"rule": "已经读过的规条"}
-    assert game.save_manager.saved_payloads[-1]["violation_count"] == 0
-    assert game.save_manager.saved_payloads[-1]["known_rules"] == {"rule": "已经读过的规条"}
+    assert game.save_manager.saved_payloads == []
 
 
-def test_death_restart_returns_to_the_courtyard_south_spawn_outside_the_wall():
+def test_death_restart_restores_the_saved_position_without_writing():
     game = Game()
     game.save_manager = MemorySaveManager()
     game.current_slot_id = 1
     game.current_save_data = game.save_manager.default_save(1)
     game._apply_save_data(game.current_save_data)
     game.mode = game.MODE_PLAYING
+    game.player.rect.topleft = (612, 330)
+    game.player.position.xy = game.player.rect.topleft
+    game.player.facing = "down"
+    game._save_checkpoint("safe_task")
+    game.player.rect.topleft = (700, 300)
     game.death_screen.active = True
 
     game._reset_after_death()
 
-    spawn_x, spawn_y = config.COURTYARD_SOUTH_SPAWN
-    assert game.player.rect.midbottom == (spawn_x, spawn_y)
-    assert not any(game.player.rect.colliderect(rect) for rect in game._get_collision_rects())
-    assert game.save_manager.saved_payloads[-1]["player"] == {
-        "x": spawn_x - config.PLAYER_SIZE[0] // 2,
-        "y": spawn_y - config.PLAYER_SIZE[1],
-        "facing": "down",
-    }
+    assert game.mode == game.MODE_PLAYING
+    assert game.player.rect.topleft == (612, 330)
+    assert not game.death_screen.active
+    assert len(game.save_manager.saved_payloads) == 1
 
 
 def test_death_restart_can_pause_briefly_without_retriggering_pool_gaze():
@@ -1460,7 +1467,7 @@ def test_home_rules_dialog_close_autosaves_briefing_progress():
     assert game.save_manager.saved_payloads[-1]["home_tutorial"]["rules_briefing_complete"] is True
 
 
-def test_escape_confirmation_works_in_home_and_transition():
+def test_escape_opens_pause_in_home_but_not_during_transition():
     game = Game()
     game.save_manager = MemorySaveManager()
     game.current_slot_id = 1
@@ -1471,55 +1478,59 @@ def test_escape_confirmation_works_in_home_and_transition():
 
     game._update_home(0.016)
 
-    assert game.exit_confirm_open
+    assert game.mode == game.MODE_PAUSE
     assert game.running is True
 
-    game.exit_confirm_open = False
     game.mode = game.MODE_TRANSITION
+    game.scene_transition.active = True
     game.input_manager._pressed_once.add(config.ACTION_QUIT)
     game._update_transition(0.016)
 
-    assert game.exit_confirm_open
+    assert game.mode == game.MODE_TRANSITION
     assert game.running is True
 
-
-def test_save_exit_confirmation_can_cancel_or_save_and_exit():
-    game = Game()
-    game.save_manager = MemorySaveManager()
-    game.current_slot_id = 1
-    game.current_save_data = game.save_manager.default_save(1)
-    game._apply_save_data(game.current_save_data)
-    game.mode = game.MODE_PLAYING
-    game.exit_confirm_open = True
-    game.input_manager._pressed_once.add(config.ACTION_INTERACT)
-
-    game._update_playing(0.016)
-
-    assert not game.exit_confirm_open
-    assert game.running is True
-
-    game.exit_confirm_open = True
+    game.mode = game.MODE_GUANGHAN
+    game.input_manager._pressed_once.clear()
     game.input_manager._pressed_once.add(config.ACTION_QUIT)
-    game._update_playing(0.016)
+    game._update_guanghan(0.016)
 
-    assert game.running is False
-    assert game.save_manager.saved_payloads[-1]["slot_id"] == 1
+    assert game.mode == game.MODE_PAUSE
 
 
-def test_save_exit_confirmation_accepts_restart_key_as_save_exit():
+def test_dialogue_esc_does_not_open_pause_or_close_dialogue():
     game = Game()
     game.save_manager = MemorySaveManager()
     game.current_slot_id = 1
     game.current_save_data = game.save_manager.default_save(1)
     game._apply_save_data(game.current_save_data)
     game.mode = game.MODE_PLAYING
-    game.exit_confirm_open = True
-    game.input_manager._pressed_once.add(config.ACTION_RESTART)
+    game.dialog_box.active = True
+    game.dialog_box.lines = ["对话中的规条。"]
+    game.dialog_box.current_index = 0
+    game.input_manager._pressed_once.add(config.ACTION_QUIT)
 
     game._update_playing(0.016)
 
-    assert game.running is False
-    assert game.save_manager.saved_payloads[-1]["slot_id"] == 1
+    assert game.mode == game.MODE_PLAYING
+    assert game.dialog_box.active is True
+    assert game.running is True
+
+
+def test_rule_book_esc_closes_rule_book_without_opening_pause():
+    game = Game()
+    game.save_manager = MemorySaveManager()
+    game.current_slot_id = 1
+    game.current_save_data = game.save_manager.default_save(1)
+    game._apply_save_data(game.current_save_data)
+    game.mode = game.MODE_PLAYING
+    game.rule_book.is_open = True
+    game.input_manager._pressed_once.add(config.ACTION_QUIT)
+
+    game._update_playing(0.016)
+
+    assert game.mode == game.MODE_PLAYING
+    assert game.rule_book.is_open is False
+    assert game.running is True
 
 
 
@@ -1551,6 +1562,7 @@ def test_pool_rule_triggers_only_when_player_stares_at_reflection():
     game._update_rule_checks(2.49)
 
     assert game.game_state.violation_count == 0
+    assert game.moon_pool.gaze_progress > 0.9
     assert game.mainline["broken_jade_obtained"] is False
 
     game._update_rule_checks(0.02)
@@ -1585,10 +1597,7 @@ def test_third_ordinary_violation_enters_death_without_completing_npc_tasks():
     assert game.dialog_box.active is False
     assert game.mainline["wugang_checked"] is False
     assert game.mainline["yutu_checked"] is False
-    saved = game.save_manager.saved_payloads[-1]
-    assert saved["violation_count"] == 3
-    assert saved["mainline"]["wugang_checked"] is False
-    assert saved["mainline"]["yutu_checked"] is False
+    assert game.save_manager.saved_payloads == []
 
 
 def test_countdown_zero_clears_report_staging_before_change_ending():
@@ -1663,6 +1672,7 @@ def test_death_does_not_open_downstream_gate_even_if_prior_tasks_were_complete()
     game.mode = game.MODE_PLAYING
     game.mainline["wugang_checked"] = True
     game.mainline["yutu_checked"] = True
+    game.mainline["repair_checked"] = True
     game.game_state.violation_count = game.game_state.MAX_VIOLATIONS
     game.death_screen.active = True
 
@@ -1690,7 +1700,7 @@ def test_pool_gaze_commits_broken_jade_before_third_violation_death():
     assert game.broken_jade_view.acquired is True
     assert game.broken_jade_view.active is True
     saved = game.save_manager.saved_payloads[-1]
-    assert saved["violation_count"] == 3
+    assert saved["violation_count"] == 2  # a collectible checkpoint must be alive
     assert saved["mainline"]["broken_jade_obtained"] is True
     assert saved["mainline"]["wugang_checked"] is False
     assert saved["mainline"]["yutu_checked"] is False
@@ -1709,6 +1719,56 @@ def test_loaded_broken_jade_keeps_clues_without_reopening_pickup():
         "1. 留名者，名归月籍。",
         "2. 命既毕，速离月宫。",
     ]
+
+
+def test_safe_standing_does_not_precharge_palace_running_rule():
+    game = Game()
+    game.player.rect.center = (600, game.palace_run_zone.rect.centery)
+    game.player.velocity.xy = (0, 0)
+    game._update_rule_checks(0.6)
+    game.input_manager.is_pressed = lambda action: action == config.ACTION_RUN
+    game.player.velocity.xy = (140, 0)
+    game._update_rule_checks(0.1)
+    assert game.game_state.violation_count == 0
+    game._update_rule_checks(0.56)
+    assert game.game_state.violation_count == 1
+
+
+def test_yutu_gaze_requires_continuous_eye_contact_and_resets_on_turn():
+    game = Game()
+    game.player.rect.center = (game.yutu.rect.left - 20, game.yutu.rect.centery)
+    game.player.facing = "right"
+    game._update_rule_checks(0.4)
+    assert game.game_state.violation_count == 0
+    game.player.facing = "left"
+    game._update_rule_checks(0.1)
+    game.player.facing = "right"
+    game._update_rule_checks(0.4)
+    assert game.game_state.violation_count == 0
+    game._update_rule_checks(0.26)
+    assert game.game_state.violation_count == 1
+
+
+def test_yutu_front_arc_follows_shifted_body():
+    game = Game()
+    body = game.yutu.get_collision_rect()
+    game.player.rect.center = (body.left - 4, body.centery)
+    assert game._is_player_in_yutu_front_arc()
+    game.player.rect.centerx = body.right + 4
+    assert not game._is_player_in_yutu_front_arc()
+
+
+def test_pool_warning_disappears_on_turn_and_does_not_award_jade():
+    game = Game()
+    game.player.rect.center = (game.moon_pool.rect.centerx, game.moon_pool.visual_rect.bottom + 8)
+    game.player.facing = "up"
+    game._update_rule_checks(1.8)
+    assert game.moon_pool.gaze_progress > 0.5
+    assert game.game_state.violation_count == 0
+    assert not game.mainline.get("broken_jade_obtained")
+    game.player.facing = "down"
+    game._update_rule_checks(0.1)
+    assert game.moon_pool.gaze_progress == 0
 
 
 def test_continuing_pool_reflection_requires_a_fresh_full_gaze_timer():
@@ -1860,7 +1920,7 @@ def test_tree_bleeding_event_starts_repair_window_without_violation():
     assert game.laurel_tree.bleeding is True
     assert game.wugang.is_resting is True
     assert game.game_state.violation_count == 0
-    assert game.save_manager.saved_payloads[-1]["laurel_tree"]["bleeding"] is True
+    assert game.save_manager.saved_payloads == []
 
 
 def test_unbleeding_laurel_violates_once_per_entry_with_two_second_cooldown():

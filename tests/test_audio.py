@@ -225,6 +225,7 @@ def test_audio_manager_declares_all_cg_cues_in_the_same_audio_registry():
 def test_real_game_states_select_menu_and_scene_bgms():
     assert select_bgm_for_state("main_menu", {}) == "main_menu"
     assert select_bgm_for_state("save_menu", {}) == "main_menu"
+    assert select_bgm_for_state("opening", {}) == "home"
     assert select_bgm_for_state("home", {}) == "home"
     assert select_bgm_for_state("playing", {}) == "guanghan_square"
     assert select_bgm_for_state("guanghan", {}) == "guanghan_palace"
@@ -244,7 +245,7 @@ def test_real_game_states_select_menu_and_scene_bgms():
     assert select_bgm_for_state("ending_cg", {"ending": "be_yutu"}) == "ending_be"
 
 
-def test_main_menu_bgm_continues_through_save_menu_and_stops_for_opening_cg():
+def test_main_menu_bgm_changes_to_moon_valley_for_opening_cg_and_continues_into_home():
     FakeSound.played = []
     FakeSound.stopped = []
     audio = AudioManager(EventBus(), mixer=FakeMixer())
@@ -259,11 +260,18 @@ def test_main_menu_bgm_continues_through_save_menu_and_stops_for_opening_cg():
     assert audio.bgm_status()["active"] == "main_menu"
     assert FakeSound.played.count("bgm_main_menu.wav") == 1
 
-    audio.sync_for_game_state("opening_cg", {})
+    audio.sync_for_game_state("opening", {})
     assert audio.bgm_status()["transitioning"] is True
     audio.update(AudioManager.BGM_FADE_SECONDS)
-    assert audio.bgm_status()["active"] is None
+    audio.update(AudioManager.BGM_FADE_SECONDS)
+    assert audio.bgm_status()["active"] == "home"
     assert FakeSound.stopped.count("bgm_main_menu.wav") == 1
+    assert FakeSound.played.count("bgm_home_dream_2_ambience.mp3") == 1
+
+    audio.sync_for_game_state("home", {})
+    audio.update(AudioManager.BGM_FADE_SECONDS)
+    assert audio.bgm_status()["active"] == "home"
+    assert FakeSound.played.count("bgm_home_dream_2_ambience.mp3") == 1
 
 
 def test_bgm_sync_does_not_restart_same_scene_track_and_fades_between_scenes():
@@ -293,21 +301,52 @@ def test_bgm_sync_does_not_restart_same_scene_track_and_fades_between_scenes():
     assert FakeSound.stopped.count("bgm_home_dream_2_ambience.mp3") == 1
 
 
-def test_bgm_ducks_for_dialogue_and_cg_without_restarting():
+def test_repair_sfx_pan_respects_live_volume_and_keeps_square_bgm():
+    class Channel:
+        def set_volume(self, left, right):
+            self.volume = (left, right)
+
+    channel = Channel()
     FakeSound.played = []
+    FakeSound.stopped = []
+    audio = AudioManager(EventBus(), mixer=FakeMixer())
+    audio.sync_for_game_state("playing", {})
+    audio.update(2)
+    audio.sync_for_game_state("repair_hall", {})
+    sound = audio.sounds["repair_drip"]
+    sound.play = lambda: channel
+    audio.play_spatial("repair_drip", gain=.5, pan=.3)
+    assert sound.volume == pytest.approx(audio.VOLUMES["repair_drip"])
+    assert channel.volume == pytest.approx((.35, .5))
+    audio.set_sfx_volume(.5)
+    assert sound.volume == pytest.approx(audio.VOLUMES["repair_drip"] * .5)
+    assert channel.volume == pytest.approx((.35, .5))
+    audio.stop_repair_sounds()
+    assert FakeSound.played.count(Path(BGM_FILES["guanghan_square"]).name) == 1
+    assert Path(BGM_FILES["guanghan_square"]).name not in FakeSound.stopped
+
+
+def test_bgm_continues_at_full_level_through_dialogue_and_ducks_only_for_cg():
+    FakeSound.played = []
+    FakeSound.stopped = []
     audio = AudioManager(EventBus(), mixer=FakeMixer())
     audio.sync_for_game_state("home", {})
     audio.update(AudioManager.BGM_FADE_SECONDS)
 
     bus = audio.event_bus
     bus.emit(DIALOG_ACTIVE_CHANGED, active=True, speaker_id="change")
-    assert audio.sounds["home"].volume < AudioManager.VOLUMES["home"]
+    assert audio.bgm_status()["active"] == "home"
+    assert audio.sounds["home"].volume == AudioManager.VOLUMES["home"]
+    assert FakeSound.played.count("bgm_home_dream_2_ambience.mp3") == 1
+    assert "bgm_home_dream_2_ambience.mp3" not in FakeSound.stopped
     played_before_cg = list(FakeSound.played)
     audio.begin_cg_cycle()
     assert FakeSound.played == played_before_cg
     assert audio.sounds["home"].volume < AudioManager.VOLUMES["home"]
     audio.stop_cg_sounds()
+    assert audio.sounds["home"].volume == AudioManager.VOLUMES["home"]
     bus.emit(DIALOG_ACTIVE_CHANGED, active=False, speaker_id="change")
+    assert audio.bgm_status()["active"] == "home"
     assert audio.sounds["home"].volume == AudioManager.VOLUMES["home"]
 
 
@@ -345,7 +384,12 @@ def test_bgm_sound_load_failure_is_nonfatal_and_clears_stale_scene_track():
 
 def test_build_script_collects_the_audio_directory_for_bgm_assets():
     build_text = Path("build.py").read_text(encoding="utf-8")
-    assert 'for asset_group in ("audio", "sprites")' in build_text
+    import ast
+    tree = ast.parse(build_text)
+    groups = [set(ast.literal_eval(node.iter)) for node in ast.walk(tree)
+              if isinstance(node, ast.For) and isinstance(node.target, ast.Name)
+              and node.target.id == "asset_group"]
+    assert any({"audio", "sprites", "fonts"} <= group for group in groups)
     assert set(BGM_FILES).issubset(AUDIO_FILES)
 
 

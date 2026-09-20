@@ -69,8 +69,8 @@ class DeathScreen:
         if self.show_messages:
             if not render_text(surface, "你已陨落于月宫", 172, 112, 20, palette.BLOOD_RED):
                 render_block_text(surface, "你已陨落于月宫", 172, 112)
-            if not render_text(surface, "按 R 键重新开始", 180, 142, 14, palette.MOON_WHITE):
-                render_block_text(surface, "按 R 键重新开始", 180, 142)
+            if not render_text(surface, "按 R 返回最近存档点", 180, 142, 14, palette.MOON_WHITE):
+                render_block_text(surface, "按 R 返回最近存档点", 180, 142)
 
     def _draw_shot_asset(self, surface: pygame.Surface) -> bool:
         """按独立镜头时钟切换三镜；缺图时以黑底安全降级。"""

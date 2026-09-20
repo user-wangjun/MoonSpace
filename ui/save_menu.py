@@ -15,10 +15,13 @@ from utils.pixel_art import draw_filled_rect, draw_rect
 SAVE_MODE_NEW = "new"
 SAVE_MODE_LOAD = "load"
 SAVE_MODE_DELETE = "delete"
+SAVE_MODE_SAVE = "save"
+# Descriptive alias for integrations that prefer the full action name.
+SAVE_MODE_SAVE_GAME = SAVE_MODE_SAVE
 
 
 class SaveMenu:
-    """三槽位存档菜单，可用于新游戏、读档或删除存档。"""
+    """三槽位存档菜单，可用于新游戏、读档、保存当前进度或删除存档。"""
 
     def __init__(self, save_manager: SaveManager) -> None:
         self.save_manager = save_manager
@@ -28,14 +31,16 @@ class SaveMenu:
         self.delete_message_timer = 0.0
         self.message = ""
         self.slots = self.save_manager.list_slots()
+        self.back_destination = "主菜单"
 
-    def open(self, mode: str) -> None:
+    def open(self, mode: str, *, back_destination: str = "主菜单") -> None:
         """以指定模式打开存档菜单。"""
         self.mode = mode
         self.selected_slot = None
         self.back_requested = False
         self.message = ""
         self.delete_message_timer = 0.0
+        self.back_destination = back_destination
         self.refresh()
 
     def refresh(self) -> None:
@@ -67,9 +72,19 @@ class SaveMenu:
             return slot_id
         return None
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def show_message(self, message: str, duration: float = 2.0) -> None:
+        """显示保存成功等非删除提示。"""
+        self.message = message
+        self.delete_message_timer = max(0.0, duration)
+
+    def draw(self, surface: pygame.Surface, *, overlay: bool = False) -> None:
         """绘制存档菜单。"""
-        surface.fill(palette.NIGHT_BLACK)
+        if overlay:
+            shade = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            shade.fill((0, 0, 0, 170))
+            surface.blit(shade, (0, 0))
+        else:
+            surface.fill(palette.NIGHT_BLACK)
         render_text(surface, "MoonSpace（月之隙）", 148, 30, 22, palette.PALE_MOON)
         render_text(surface, self._title(), 180, 64, 15, palette.MOON_WHITE)
 
@@ -98,13 +113,17 @@ class SaveMenu:
             return "选择新游戏槽位"
         if self.mode == SAVE_MODE_DELETE:
             return "选择要删除的存档"
+        if self.mode == SAVE_MODE_SAVE:
+            return "选择存档点备份槽位"
         return "选择要读取的存档"
 
     def _hint(self) -> str:
         """返回当前模式操作提示。"""
         if self.mode == SAVE_MODE_DELETE:
             return "按 1 / 2 / 3 删除对应槽位    Esc 返回"
-        return "按 1 / 2 / 3 选择槽位    Esc 返回主菜单"
+        if self.mode == SAVE_MODE_SAVE:
+            return f"按 1 / 2 / 3 备份最近存档点    Esc 返回{self.back_destination}"
+        return f"按 1 / 2 / 3 选择槽位    Esc 返回{self.back_destination}"
 
     def _draw_slot(self, surface: pygame.Surface, summary: dict, x: int, y: int) -> None:
         """绘制单个槽位卡片。"""
@@ -117,12 +136,15 @@ class SaveMenu:
             title = f"槽位 {slot_id}：存档损坏"
             if self.mode == SAVE_MODE_DELETE:
                 detail = "可按数字键删除后重建"
+            elif self.mode == SAVE_MODE_SAVE:
+                detail = "保存当前进度会覆盖这个损坏的存档"
             elif self.mode == SAVE_MODE_NEW:
                 detail = "新游戏会覆盖这个损坏的存档"
             else:
                 detail = "请先返回主菜单并选择删除存档"
         elif summary["exists"]:
-            title = f"槽位 {slot_id}：继续游戏"
+            action_label = "覆盖保存" if self.mode == SAVE_MODE_SAVE else "继续游戏"
+            title = f"槽位 {slot_id}：{action_label}"
             detail = (
                 f"{summary.get('saved_at', '未知时间')}  "
                 f"规则 {summary.get('known_rule_count', 0)}  "
@@ -130,7 +152,7 @@ class SaveMenu:
             )
         else:
             title = f"槽位 {slot_id}：空"
-            detail = "新游戏将从血月之夜开始"
+            detail = "备份最近完成事件的存档" if self.mode == SAVE_MODE_SAVE else "新游戏将从血月之夜开始"
 
         if self.mode == SAVE_MODE_DELETE and not summary["exists"]:
             title = f"槽位 {slot_id}：空"

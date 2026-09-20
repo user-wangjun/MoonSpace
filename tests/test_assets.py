@@ -6,6 +6,40 @@ import config
 from utils.assets import clear_asset_cache, load_image, load_sprite_grid
 
 
+def test_runtime_character_import_removes_key_color_without_erasing_dark_body(monkeypatch, tmp_path):
+    import utils.assets as assets
+    source = pygame.Surface((336, 496))
+    source.fill((0, 255, 0))
+    pygame.draw.rect(source, (8, 12, 18), (84, 124, 168, 248))
+    path = tmp_path / "player.png"
+    pygame.image.save(source, path)
+    monkeypatch.setattr(assets, "asset_path", lambda _: path)
+    clear_asset_cache()
+    try:
+        loaded = load_image("sprites/moonspace/player_envoy_large.png")
+        assert loaded.get_size() == (168, 248)
+        assert loaded.get_at((0, 0)).a == 0
+        assert loaded.get_at((84, 124)) == (8, 12, 18, 255)
+    finally:
+        clear_asset_cache()
+
+
+def test_runtime_map_import_preserves_world_dimensions(monkeypatch, tmp_path):
+    import utils.assets as assets
+    source = pygame.Surface((1536, 1024))
+    source.fill((12, 24, 36))
+    path = tmp_path / "map.png"
+    pygame.image.save(source, path)
+    monkeypatch.setattr(assets, "asset_path", lambda _: path)
+    clear_asset_cache()
+    try:
+        loaded = load_image("sprites/moonspace/backgrounds/courtyard_expanded_closed.png")
+        assert loaded.get_size() == (960, 640)
+        assert loaded.get_at((480, 320)).a == 255
+    finally:
+        clear_asset_cache()
+
+
 def test_load_image_returns_cached_alpha_surface():
     clear_asset_cache()
 
@@ -45,11 +79,13 @@ def test_user_confirmed_gate_and_transition_reference_assets_load():
     gate_closed = load_image("sprites/moonspace/backgrounds/courtyard_gate_closed.png")
     gate_open = load_image("sprites/moonspace/backgrounds/courtyard_gate_open.png")
     monitor_sheet = load_image("sprites/moonspace/sheets/scene_transition_monitor_24frames.png")
+    head_only_monitor_sheet = load_image("sprites/moonspace/sheets/scene_transition_monitor_head_only_v2.png")
     moon_pool = load_image("sprites/moonspace/moon_pool_large.png")
 
     assert gate_closed.get_size() == (1672, 941)
     assert gate_open.get_size() == (1672, 941)
     assert monitor_sheet.get_size() == (1448, 1086)
+    assert head_only_monitor_sheet.get_size() == (1448, 1086)
     assert moon_pool.get_size() == (144, 144)
     assert all(moon_pool.get_at(point).a == 0 for point in ((0, 0), (143, 0), (0, 143), (143, 143)))
 
@@ -116,7 +152,9 @@ def test_home_tutorial_sky_has_no_red_moon_glow():
     red_sky_pixels = 0
     sampled = 0
     for x in range(0, home.get_width(), 2):
-        for y in range(0, min(120, home.get_height()), 2):
+        # The taller repainted gate has warm lamps below y=80; sample the sky,
+        # not the lamps, when checking that the arrival scene has no red moon.
+        for y in range(0, min(80, home.get_height()), 2):
             r, g, b, _ = home.get_at((x, y))
             sampled += 1
             if r > 100 and r > g * 1.45 and r > b * 1.25:

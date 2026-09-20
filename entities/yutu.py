@@ -16,9 +16,8 @@ class Yutu(NPCBase):
 
     LARGE_FRAME_WIDTH = 64
     LARGE_FRAME_HEIGHT = 78
-    # The approved atlas was authored with the baked mortar on the left of the
-    # rabbit. Once the prop is anchored at PoundTable's world collision point,
-    # move only the character layers so hands and pestle still meet the bowl.
+    # Preserve the established foot anchor while the complete character
+    # animation reaches left toward the independently collidable mortar.
     DRAW_OFFSET_X = 24
     BODY_SPRITE_PATH = "sprites/moonspace/yutu_body_4x4.png"
     PESTLE_OVERLAY_PATH = "sprites/moonspace/yutu_pestle_overlay_4x4.png"
@@ -60,41 +59,21 @@ class Yutu(NPCBase):
                 self.current_frame = (self.current_frame + 1) % 16
 
     def draw(self, surface: pygame.Surface, camera_offset: tuple[int, int] = (0, 0)) -> None:
-        """绘制分层玉兔：本体先画，手部/杵透明覆盖层后画。"""
+        """Draw the complete body/held-pestle pose; the mortar remains a world prop."""
         rect = self.rect.move(camera_offset)
         frame_index = self.current_frame % 16 if self.is_pounding else 15
         sprite = self._load_frame(self.BODY_SPRITE_PATH, frame_index)
-        large_sprite = sprite is not None
-        if sprite is None:
-            # Compatibility fallback is deliberately after the new body layer;
-            # the normal path never loads the old baked prop sheet.
-            sprite = self._load_frame(self.LEGACY_LARGE_SPRITE_PATH, frame_index)
-            large_sprite = sprite is not None
-        if sprite is None:
-            large_sprite = False
-
         if sprite is not None:
-            surface.blit(
-                sprite,
-                (
-                    rect.centerx + self.DRAW_OFFSET_X - sprite.get_width() // 2,
-                    rect.bottom - sprite.get_height(),
-                ),
-            )
-        else:
-            self._draw_procedural_body(surface, rect)
-
-        overlay = self._load_frame(self.PESTLE_OVERLAY_PATH, frame_index) if large_sprite else None
-        if overlay is not None:
-            surface.blit(
-                overlay,
-                (
-                    rect.centerx + self.DRAW_OFFSET_X - overlay.get_width() // 2,
-                    rect.bottom - overlay.get_height(),
-                ),
-            )
-        else:
-            self._draw_procedural_overlay(surface, rect)
+            bounds = sprite.get_bounding_rect(min_alpha=8)
+            # The painted foot center is four pixels right of the cell center.
+            # Keep that foot centered on the existing world collision anchor.
+            surface.blit(sprite, (
+                rect.centerx + self.DRAW_OFFSET_X - sprite.get_width() // 2 - 4,
+                rect.bottom - bounds.bottom,
+            ))
+            return
+        self._draw_procedural_body(surface, rect)
+        self._draw_procedural_overlay(surface, rect)
 
     def _load_frame(self, path: str, frame_index: int) -> pygame.Surface | None:
         """Load one transparent body/overlay frame without letting missing art crash."""
@@ -128,6 +107,12 @@ class Yutu(NPCBase):
         """返回与 64x78 大图一致的可视范围。"""
         rect = pygame.Rect(0, 0, self.LARGE_FRAME_WIDTH, self.LARGE_FRAME_HEIGHT)
         rect.midbottom = (self.rect.centerx + self.DRAW_OFFSET_X, self.rect.bottom)
+        return rect
+
+    def get_collision_rect(self) -> pygame.Rect:
+        """以右移后的本体脚底为硬碰撞，避免空气墙和穿过身体。"""
+        rect = pygame.Rect(0, 0, 24, 10)
+        rect.midbottom = self.get_visual_rect().midbottom
         return rect
 
     def get_interaction_hint_anchor(self) -> tuple[int, int]:

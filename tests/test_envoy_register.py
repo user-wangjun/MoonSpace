@@ -49,18 +49,19 @@ def test_registration_page_accepts_name_and_submits_with_enter():
     assert register.mode == register.MODE_COMPLETE
 
 
-def test_registration_page_does_not_submit_empty_name_on_enter():
+def test_registration_page_submits_unnamed_envoy_on_enter():
     register = EnvoyRegister()
     inputs = InputManager()
     register.open_register()
     inputs._keys_pressed_once.add(pygame.K_RETURN)
 
-    assert register.update(inputs) is False
-    assert register.registered is False
-    assert register.mode == register.MODE_REGISTER
+    assert register.update(inputs) is True
+    assert register.registered is True
+    assert register.mode == register.MODE_COMPLETE
+    assert register.collect_save_data() == {"name": "无名", "registered": True}
 
 
-def test_registration_page_disables_enter_button_until_name_is_typed(monkeypatch):
+def test_registration_page_allows_enter_button_without_typing(monkeypatch):
     register = EnvoyRegister()
     register.open_register()
     buttons = []
@@ -72,7 +73,25 @@ def test_registration_page_disables_enter_button_until_name_is_typed(monkeypatch
 
     register._draw_name_input(pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT)))
 
-    assert ("Enter 登记", False) in buttons
+    assert ("Enter 登记", True) in buttons
+
+
+def test_registration_can_finish_and_close_using_keypad_enter():
+    register = EnvoyRegister()
+    inputs = InputManager()
+    register.open_register()
+
+    for expected_mode in (register.MODE_COMPLETE, register.MODE_SEALED):
+        inputs.begin_frame()
+        inputs.process_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_KP_ENTER, mod=0))
+        register.update(inputs)
+        assert register.mode == expected_mode
+
+    inputs.begin_frame()
+    inputs.process_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN, mod=0))
+    assert register.update(inputs) is False
+    assert register.active is False
+    assert register.collect_save_data() == {"name": "无名", "registered": True}
 
 
 def test_registration_page_uses_confirmed_unsubmitted_columns():

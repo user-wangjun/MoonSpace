@@ -7,6 +7,7 @@ from pathlib import Path
 import pygame
 
 from utils import palette
+from utils.assets import asset_path
 from utils.pixel_art import draw_filled_rect
 
 
@@ -39,6 +40,20 @@ def load_font(size: int) -> pygame.font.Font:
     """
     if not pygame.font.get_init():
         pygame.font.init()
+
+    # Native 10/12 pixel glyph grids stay legible at the game's 480x270 scale.
+    # Use integral enlargement for titles; fractional pixel scaling breaks strokes.
+    if size <= 11:
+        grid, rendered_size = 10, 10
+    elif size < 18:
+        grid, rendered_size = 12, 12
+    elif size < 22:
+        grid, rendered_size = 10, 20
+    else:
+        grid, rendered_size = 12, max(24, round(size / 12) * 12)
+    bundled = asset_path(f"fonts/fusion-pixel-{grid}px-monospaced-zh_hans.otf")
+    if bundled.exists():
+        return pygame.font.Font(str(bundled), rendered_size)
 
     for font_path in FONT_CANDIDATES:
         if font_path.exists():

@@ -97,13 +97,17 @@ class EnvoyRegister:
             self.close()
             return False
 
+        confirm = (
+            input_manager.was_key_pressed(pygame.K_RETURN)
+            or input_manager.was_key_pressed(pygame.K_KP_ENTER)
+        )
         if self.mode == self.MODE_SEALED:
-            if input_manager.was_pressed(config.ACTION_INTERACT):
+            if confirm or input_manager.was_pressed(config.ACTION_INTERACT):
                 self.close()
             return False
 
         if self.mode == self.MODE_COMPLETE:
-            if input_manager.was_pressed(config.ACTION_INTERACT):
+            if confirm or input_manager.was_pressed(config.ACTION_INTERACT):
                 self.mode = self.MODE_SEALED
             return False
 
@@ -126,11 +130,8 @@ class EnvoyRegister:
 
         self._update_etch_animation(max(0.0, dt))
 
-        if self.draft_name and (
-            input_manager.was_key_pressed(pygame.K_RETURN)
-            or input_manager.was_key_pressed(pygame.K_KP_ENTER)
-        ):
-            self.name = self.draft_name
+        if confirm:
+            self.name = self.draft_name or "无名"
             self.registered = True
             self.etched_char_count = len(self.name)
             self.mode = self.MODE_COMPLETE
@@ -166,7 +167,7 @@ class EnvoyRegister:
         if self.mode == self.MODE_REGISTER:
             self._draw_name_input(surface)
         else:
-            self._draw_close_action(surface, "E 合卷" if self.mode == self.MODE_COMPLETE else "E / Esc 退出")
+            self._draw_close_action(surface, "Enter / E 合卷" if self.mode == self.MODE_COMPLETE else "Enter / Esc 退出")
 
     def _draw_background(self, surface: pygame.Surface, page: int) -> None:
         try:
@@ -228,7 +229,8 @@ class EnvoyRegister:
         draw_filled_rect(surface, input_panel, (4, 8, 15))
         draw_double_rect(surface, input_panel, palette.MOON_WHITE, palette.DEEP_BLUE)
         font = load_font(11)
-        typed = font.render(f"姓名：{self.draft_name}│", False, palette.MOON_WHITE)
+        text = f"姓名：{self.draft_name}│" if self.draft_name else "姓名：│  留空以无名登记"
+        typed = font.render(text, False, palette.MOON_WHITE)
         surface.blit(typed, typed.get_rect(center=input_panel.center))
 
         self._draw_button(surface, pygame.Rect(126, 249, 105, 18), "Esc 退出", active=False)
@@ -236,7 +238,7 @@ class EnvoyRegister:
             surface,
             pygame.Rect(249, 249, 105, 18),
             "Enter 登记",
-            active=bool(self.draft_name),
+            active=True,
         )
 
     @staticmethod

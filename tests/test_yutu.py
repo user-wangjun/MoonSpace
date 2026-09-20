@@ -80,13 +80,46 @@ def test_yutu_draw_uses_png_pounding_sprite():
     assert len(colors) > 20
 
 
-def test_yutu_normal_draw_uses_separate_body_and_pestle_layers():
+def test_yutu_complete_animation_keeps_original_cell_dimensions():
     assert Yutu.BODY_SPRITE_PATH != Yutu.LEGACY_LARGE_SPRITE_PATH
     assert load_image(Yutu.BODY_SPRITE_PATH).get_size() == (256, 312)
     assert load_image(Yutu.PESTLE_OVERLAY_PATH).get_size() == (256, 312)
+
+
+def test_yutu_does_not_overlay_obsolete_detached_hands(monkeypatch):
+    import entities.yutu as module
+    original = module.load_sprite_grid
+    def load_grid(path, *args):
+        if path == Yutu.PESTLE_OVERLAY_PATH:
+            obsolete = pygame.Surface((64, 78), pygame.SRCALPHA)
+            obsolete.fill((255, 0, 255))
+            return [[obsolete] * 4 for _ in range(4)]
+        return original(path, *args)
+    monkeypatch.setattr(module, "load_sprite_grid", load_grid)
+    yutu = Yutu(EventBus(), 100, 120)
+    surface = pygame.Surface((240, 240), pygame.SRCALPHA)
+    yutu.draw(surface)
+    assert not any(surface.get_at((x, y))[:3] == (255, 0, 255) for x in range(90, 180) for y in range(50, 145))
+
+
+def test_yutu_animation_feet_do_not_float_between_frames():
+    yutu = Yutu(EventBus(), 100, 120)
+    for frame in range(16):
+        yutu.current_frame = frame
+        surface = pygame.Surface((240, 240), pygame.SRCALPHA)
+        yutu.draw(surface)
+        assert surface.get_bounding_rect(min_alpha=8).bottom == 136
 
 
 def test_yutu_visual_anchor_includes_layer_alignment_offset():
     yutu = Yutu(EventBus(), 700, 300)
 
     assert yutu.get_visual_rect().centerx == yutu.rect.centerx + Yutu.DRAW_OFFSET_X
+
+
+def test_yutu_collision_follows_visible_feet_not_old_sprite_origin():
+    yutu = Yutu(EventBus())
+    footprint = yutu.get_collision_rect()
+    assert footprint.midbottom == yutu.get_visual_rect().midbottom
+    assert footprint.height <= 12
+    assert not footprint.collidepoint(yutu.rect.midleft)

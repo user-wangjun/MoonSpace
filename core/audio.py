@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
+
 import pygame
 
 from core.event_bus import (
@@ -25,13 +28,15 @@ BGM_FILES = {
 }
 
 MENU_MODES = ("main_menu", "save_menu")
-PLAYABLE_MODES = ("home", "playing", "guanghan")
+PLAYABLE_MODES = ("home", "playing", "guanghan", "repair_hall")
 
 
 def select_bgm_for_state(mode: str, mainline: dict | None = None) -> str | None:
     """Map the real game state to one BGM key without importing Game."""
     if mode in MENU_MODES:
         return "main_menu"
+    if mode == "opening":
+        return "home"
 
     mainline = mainline or {}
     if mode == "ending_cg":
@@ -66,6 +71,7 @@ def select_bgm_for_state(mode: str, mainline: dict | None = None) -> str | None:
         "home": "home",
         "playing": "guanghan_square",
         "guanghan": "guanghan_palace",
+        "repair_hall": "guanghan_square",
     }[mode]
 
 
@@ -90,6 +96,9 @@ AUDIO_FILES = {
     "cg_moon_pool": "audio/cg_moon_pool.wav",
     "cg_laurel_roots": "audio/cg_laurel_roots.wav",
     "cg_earth_arrival": "audio/cg_earth_arrival.wav",
+    "repair_drip": "audio/repair_drip.wav",
+    "repair_chisel": "audio/repair_chisel.wav",
+    "repair_scare": "audio/repair_scare.wav",
 }
 
 CG_AUDIO_KEYS = (
@@ -110,6 +119,9 @@ class AudioManager:
     """Small resilient audio layer with one-shot, CG and scene BGM support."""
 
     BGM_FADE_SECONDS = 0.9
+    DEFAULT_BGM_BASE_VOLUME = 0.23
+    DEFAULT_BGM_VOLUME_MULTIPLIER = 1.0
+    DEFAULT_SFX_VOLUME_MULTIPLIER = 1.0
     # One reserved channel is enough because route switches fade through
     # silence.  Keeping a single physical channel makes overlap impossible,
     # including while sound effects are being emitted.
@@ -122,14 +134,14 @@ class AudioManager:
         "dialog_open": 0.12,
         "transition_found": 0.26,
         "ambient_moon_palace": 0.10,
-        # The approved title track is mastered with extra headroom so it can
-        # establish the game's tone without masking menu interaction sounds.
-        "main_menu": 0.18,
-        "home": 0.16,
-        "guanghan_square": 0.16,
-        "guanghan_palace": 0.16,
-        "ending_he": 0.18,
-        "ending_be": 0.16,
+        # Route BGM is intentionally stronger than the old 0.16–0.18 values;
+        # the user multiplier below still allows it to be reduced or muted.
+        "main_menu": DEFAULT_BGM_BASE_VOLUME,
+        "home": DEFAULT_BGM_BASE_VOLUME,
+        "guanghan_square": DEFAULT_BGM_BASE_VOLUME,
+        "guanghan_palace": DEFAULT_BGM_BASE_VOLUME,
+        "ending_he": DEFAULT_BGM_BASE_VOLUME,
+        "ending_be": DEFAULT_BGM_BASE_VOLUME,
         "cg_download_start": 0.07,
         "cg_download_complete": 0.08,
         "cg_blood_moon": 0.08,
@@ -140,13 +152,18 @@ class AudioManager:
         "cg_moon_pool": 0.06,
         "cg_laurel_roots": 0.07,
         "cg_earth_arrival": 0.08,
+        "repair_drip": 0.32,
+        "repair_chisel": 0.18,
+        "repair_scare": 0.84,
     }
 
-    def __init__(self, event_bus: EventBus, mixer=None) -> None:
+    def __init__(self, event_bus: EventBus, mixer=None, settings: Mapping[str, float] | None = None) -> None:
         self.event_bus = event_bus
         self.mixer = mixer or pygame.mixer
         self.enabled = False
         self.sounds = {}
+        self.bgm_volume_multiplier = self.DEFAULT_BGM_VOLUME_MULTIPLIER
+        self.sfx_volume_multiplier = self.DEFAULT_SFX_VOLUME_MULTIPLIER
         self._ambient_playing = False  # Legacy 5-second ambient compatibility.
         self._bgm_channels = []
         self._bgm_slots = []
@@ -156,6 +173,10 @@ class AudioManager:
         self._dialog_active = False
         self._cg_active = False
         self._cg_played_tokens: set[str] = set()
+        self.set_volume_preferences(
+            bgm_volume=(settings or {}).get("bgm_volume", self.DEFAULT_BGM_VOLUME_MULTIPLIER),
+            sfx_volume=(settings or {}).get("sfx_volume", self.DEFAULT_SFX_VOLUME_MULTIPLIER),
+        )
         self._init_mixer()
         self._load_sounds()
         self._init_bgm_channels()
@@ -289,7 +310,7 @@ class AudioManager:
         }
 
     def update(self, dt: float) -> None:
-        """Advance BGM fades and apply dialogue/CG ducking."""
+        """Advance BGM fades while keeping interaction music continuous."""
         transition = self._bgm_transition
         if transition is None:
             if self._bgm_current_slot is not None:
@@ -349,6 +370,8 @@ class AudioManager:
             "target": self._bgm_target_key,
             "active": active_key,
             "transitioning": self._bgm_transition is not None,
+            "bgm_volume": self.bgm_volume_multiplier,
+            "sfx_volume": self.sfx_volume_multiplier,
             "loaded": tuple(key for key in BGM_FILES if key in self.sounds),
         }
 
@@ -386,9 +409,89 @@ class AudioManager:
         if sound is None:
             return
         try:
+            if key not in BGM_FILES:
+                sound.set_volume(self._effective_sound_volume(key))
             sound.play()
         except pygame.error:
             self.enabled = False
+
+    def play_spatial(self, key: str, *, gain: float = 1.0, pan: float = 0.0) -> None:
+        """Local one-shots use distance/pan without restarting or ducking the square BGM."""
+        sound = self.sounds.get(key)
+        if not self.enabled or sound is None:
+            return
+        try:
+            sound.set_volume(self._effective_sound_volume(key))
+            channel = sound.play()
+            if channel is not None:
+                volume = max(0.0, min(1.0, gain))
+                pan = max(-1.0, min(1.0, pan))
+                channel.set_volume(volume * min(1.0, 1 - pan), volume * min(1.0, 1 + pan))
+        except pygame.error:
+            self.enabled = False
+
+    def stop_repair_sounds(self) -> None:
+        """Stop workshop one-shots at exit, death or load; preserve the BGM channel."""
+        for key in ("repair_drip", "repair_chisel", "repair_scare"):
+            sound = self.sounds.get(key)
+            if sound is not None:
+                try:
+                    sound.stop()
+                except pygame.error:
+                    pass
+
+    def set_volume_preferences(
+        self,
+        *,
+        bgm_volume: float | None = None,
+        sfx_volume: float | None = None,
+    ) -> None:
+        """立即应用全局 BGM/SFX 倍率，不重启任何正在播放的声音。"""
+        if bgm_volume is not None:
+            self.bgm_volume_multiplier = self._clamp_volume(bgm_volume)
+        if sfx_volume is not None:
+            self.sfx_volume_multiplier = self._clamp_volume(sfx_volume)
+
+        for key, sound in self.sounds.items():
+            if key in BGM_FILES:
+                continue
+            try:
+                sound.set_volume(self._effective_sound_volume(key))
+            except pygame.error:
+                self.enabled = False
+        self._refresh_bgm_ducking()
+
+    def set_bgm_volume(self, volume: float) -> None:
+        """设置 BGM 用户倍率的便捷接口。"""
+        self.set_volume_preferences(bgm_volume=volume)
+
+    def set_sfx_volume(self, volume: float) -> None:
+        """设置音效用户倍率的便捷接口。"""
+        self.set_volume_preferences(sfx_volume=volume)
+
+    def volume_status(self) -> dict[str, float]:
+        """返回当前全局倍率，便于设置菜单和测试观察。"""
+        return {
+            "bgm_volume": self.bgm_volume_multiplier,
+            "sfx_volume": self.sfx_volume_multiplier,
+        }
+
+    def _effective_sound_volume(self, key: str) -> float:
+        if key in BGM_FILES:
+            return self.VOLUMES.get(key, self.DEFAULT_BGM_BASE_VOLUME) * self.bgm_volume_multiplier
+        return self.VOLUMES.get(key, 0.4) * self.sfx_volume_multiplier
+
+    @staticmethod
+    def _clamp_volume(value: float) -> float:
+        if isinstance(value, bool):
+            return 1.0
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            return 1.0
+        if not math.isfinite(value):
+            return 1.0
+        return max(0.0, min(1.0, value))
 
     def _init_mixer(self) -> None:
         try:
@@ -467,13 +570,16 @@ class AudioManager:
         self._bgm_transition = None
 
     def _base_bgm_volume(self, key: str) -> float:
-        return self.VOLUMES.get(key, 0.16)
+        return self.VOLUMES.get(key, self.DEFAULT_BGM_BASE_VOLUME) * self.bgm_volume_multiplier
 
     def _duck_multiplier(self) -> float:
         if self._cg_active:
             return 0.24
-        if self._dialog_active:
-            return 0.34
+        # Dialogue is text-based and has no voice track to protect.  Keep the
+        # selected BGM at its normal level instead of making an interaction
+        # sound like the music stopped.  The same reserved channel and sound
+        # instance continue playing, so neither the track nor its position is
+        # restarted when a dialog opens or closes.
         return 1.0
 
     def _ducked_bgm_volume(self, key: str) -> float:
@@ -510,7 +616,7 @@ class AudioManager:
         for key, relative_path in AUDIO_FILES.items():
             try:
                 sound = self.mixer.Sound(str(asset_path(relative_path)))
-                sound.set_volume(self.VOLUMES.get(key, 0.4))
+                sound.set_volume(self._effective_sound_volume(key))
             except (FileNotFoundError, pygame.error):
                 continue
             self.sounds[key] = sound
@@ -543,4 +649,7 @@ class AudioManager:
         self._dialog_active = bool(active)
         if active:
             self.play("dialog_open")
+        # Do not stop, restart, or fade the BGM for a text interaction.  Keep
+        # this refresh for callers using a custom mixer so a prior CG duck is
+        # restored immediately when dialogue state changes.
         self._refresh_bgm_ducking()

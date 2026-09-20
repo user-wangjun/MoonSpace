@@ -19,14 +19,16 @@ from utils.pixel_art import draw_filled_rect, draw_rect
 
 RULE_MAINLINE_FLOW = "rule_mainline_flow"
 RULE_MAINLINE_BOUNDARY = "rule_mainline_boundary"
+RULE_REPAIR_MOON = "rule_repair_moon"
 
 
 BASIC_RULES = {
-    RULE_MAINLINE_FLOW: "凌霄来使入宫，须依次验明三职：一验吴刚伐桂，二验玉兔捣药，三入广寒宫复命；命毕方可返月谷。",
+    RULE_MAINLINE_FLOW: "凌霄来使入宫，须验明三职：吴刚伐桂、玉兔捣药、偏殿修月。三验俱全，方入广寒宫复命；命毕方可返月谷。",
     RULE_BOW_TO_TREE: RULE_TEXTS[RULE_BOW_TO_TREE],
     RULE_NO_EYE_CONTACT: RULE_TEXTS[RULE_NO_EYE_CONTACT],
     RULE_POOL_REFLECTION: RULE_TEXTS[RULE_POOL_REFLECTION],
     RULE_TREE_BLEEDING: RULE_TEXTS[RULE_TREE_BLEEDING],
+    RULE_REPAIR_MOON: "修月偏殿在广场西墙中段。门前右蟾定向，左蟾可转；月桂未见血时不得近，异像现时方可转蟾。两蟾朝向相合，偏殿门自开；入内后限六十息验出真正裂口。",
     RULE_MAINLINE_BOUNDARY: "来使只验、只记、只复命；不得代职，不得候宫。",
 }
 

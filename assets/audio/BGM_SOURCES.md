@@ -24,7 +24,7 @@ The previous procedural route prototypes were removed from the project on
 - 清白路线抵达 `home` / 月谷祭坛，以及 HE `ending_cg` → `bgm_ending_he_somnium.mp3`
 - BE `ending_cg`（`be_wugang`、`be_yutu`、`be_double`、`be_change`，旧别名 `be_laurel_mixed`） → `bgm_ending_be_insistent.ogg`
 - 污染标记不再切换到单独污染 BGM；所在场景继续使用上述场景音乐。
-- `opening` → no loop BGM
+- `opening` → `bgm_home_dream_2_ambience.mp3`（与随后月谷教程连续播放，不重启）
 
 ## Selected external sources
 
@@ -98,3 +98,16 @@ Measured output peak is -9.37 dBFS, RMS is -24.68 dBFS, and no sample clips.
 CC0 does not require attribution, but the recommended courtesy credit is:
 
 > `"Lost in a bad place" by congusbongus, CC0 1.0, via OpenGameArt.`
+
+## Repair-hall scare vocal provenance
+
+`repair_scare.wav` is a trimmed and level-normalized derivative of this CC0
+source. The edit removes MP3 encoder silence, keeps the complete short attack
+vocal, adds only click-prevention fades, and converts it to 44.1 kHz mono PCM.
+
+- Title: `Monster Attack`
+- Author: `qubodup`
+- License: `CC0 1.0`
+- Source page: https://freesound.org/people/qubodup/sounds/442957/
+- Downloaded preview: `assets/source/audio/freesound-442957-monster-attack-hq.mp3`
+- Downloaded source SHA-256: `E79084B643688AE0B373ED0E3108749E969FFFC87BF7E1A0CDA19AF0E64B628F`

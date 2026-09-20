@@ -47,6 +47,13 @@ def test_save_and_load_slot(tmp_path):
     assert loaded["saved_at"]
 
 
+@pytest.mark.parametrize("events", [None, "repair_completed", [1]])
+def test_bad_checkpoint_events_are_reported_as_corrupt(tmp_path, events):
+    manager = SaveManager(tmp_path)
+    manager.save(1, {"checkpoint_events": events})
+    assert manager.get_slot_summary(1).get("corrupted") is True
+
+
 def test_default_save_uses_large_map_spawn(tmp_path):
     manager = SaveManager(tmp_path)
 
@@ -77,6 +84,8 @@ def test_default_save_starts_before_full_mainline(tmp_path):
     assert data["mainline"] == {
         "wugang_checked": False,
         "yutu_checked": False,
+        "repair_checked": False,
+        "repair_door_open": False,
         "wugang_polluted": False,
         "yutu_polluted": False,
         "report_completed": False,

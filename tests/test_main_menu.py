@@ -3,7 +3,7 @@
 import pygame
 
 import config
-from ui.main_menu import MainMenu
+from ui.main_menu import MENU_SETTINGS, MainMenu
 from utils import palette
 
 
@@ -11,6 +11,26 @@ def test_main_menu_can_be_created():
     menu = MainMenu()
 
     assert menu.selected_action is None
+
+
+def test_main_menu_has_settings_in_the_requested_order():
+    assert [action for _label, action in MainMenu.MENU_ITEMS] == [
+        "new_game",
+        "load_game",
+        MENU_SETTINGS,
+        "delete_save",
+        "quit",
+    ]
+
+
+def test_main_menu_number_three_opens_settings():
+    menu = MainMenu()
+    input_manager = type("FakeInput", (), {
+        "was_pressed": lambda self, action: False,
+        "was_key_pressed": lambda self, key: key == pygame.K_3,
+    })()
+
+    assert menu.update(0.0, input_manager) == MENU_SETTINGS
 
 
 def test_main_menu_update_advances_animation_time():

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from copy import deepcopy
 
 import pygame
 
@@ -28,6 +29,8 @@ from core.game_state import GameState
 from core.input_manager import InputManager
 from core.rule_engine import RuleEngine
 from core.save_manager import SaveManager
+from core.settings_manager import SettingsManager
+from core.vibration import VIBRATION_TRANSITION_FOUND, VibrationManager
 from effects.distortion import DistortionEffect
 from entities.player import Player
 from entities.wugang import Wugang
@@ -36,12 +39,14 @@ from ui.death_screen import DeathScreen
 from ui.dialog_box import DialogBox
 from ui.ending_cg import EndingCG
 from ui.envoy_register import EnvoyRegister
-from ui.main_menu import MENU_DELETE_SAVE, MENU_LOAD_GAME, MENU_NEW_GAME, MENU_QUIT, MainMenu
+from ui.main_menu import MENU_DELETE_SAVE, MENU_LOAD_GAME, MENU_NEW_GAME, MENU_QUIT, MENU_SETTINGS, MainMenu
 from ui.opening_cg import OpeningCG
 from ui.rule_book import RuleBook
 from ui.broken_jade import BrokenJadeView
 from ui.scene_transition import SceneTransition
-from ui.save_menu import SAVE_MODE_DELETE, SAVE_MODE_LOAD, SAVE_MODE_NEW, SaveMenu
+from ui.pause_menu import PAUSE_LOAD, PAUSE_MAIN_MENU, PAUSE_RESUME, PAUSE_SAVE, PAUSE_SETTINGS, PauseMenu
+from ui.save_menu import SAVE_MODE_DELETE, SAVE_MODE_LOAD, SAVE_MODE_NEW, SAVE_MODE_SAVE, SaveMenu
+from ui.settings_menu import SETTINGS_BACK, SettingsMenu
 from utils import palette
 from utils.assets import load_image
 from utils.font import render_text
@@ -53,6 +58,10 @@ from world.pound_table import PoundTable
 from world.home_tutorial_scene import HomeTutorialScene
 from world.tile_map import TileMap
 from world.trigger_zone import CircularTriggerZone, TriggerZone
+from world.repair_hall import RepairHall
+from world.repair_door import RepairDoor
+from world.sign_board import BASIC_RULES
+from world.scenery import HALL_LANTERNS, draw_scenery_foreground
 
 
 class Game:
@@ -60,16 +69,21 @@ class Game:
 
     MODE_MAIN_MENU = "main_menu"
     MODE_SAVE_MENU = "save_menu"
+    MODE_SETTINGS = "settings"
+    MODE_PAUSE = "pause"
     MODE_OPENING = "opening"
     MODE_HOME = "home"
     MODE_TRANSITION = "transition"
     MODE_PLAYING = "playing"
     MODE_GUANGHAN = "guanghan"
+    MODE_REPAIR = "repair_hall"
     MODE_ENDING_CG = "ending_cg"
 
     DEFAULT_MAINLINE = {
         "wugang_checked": False,
         "yutu_checked": False,
+        "repair_checked": False,
+        "repair_door_open": False,
         "wugang_polluted": False,
         "yutu_polluted": False,
         "report_completed": False,
@@ -105,7 +119,7 @@ class Game:
         pygame.init()
         pygame.display.set_caption(config.WINDOW_TITLE)
         self.windowed_size = (config.WINDOW_WIDTH, config.WINDOW_HEIGHT)
-        self.fullscreen = False
+        self.fullscreen = True
         self.display_surface = self._set_display_mode(self.fullscreen)
         self.game_surface = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
@@ -114,7 +128,12 @@ class Game:
         self.input_manager = InputManager()
         self.event_bus = GLOBAL_EVENT_BUS
         self.event_bus.clear()
-        self.audio = AudioManager(self.event_bus)
+        self.settings_manager = SettingsManager()
+        self.audio = AudioManager(self.event_bus, settings=self.settings_manager.values)
+        self.vibration = VibrationManager(
+            self.event_bus,
+            enabled=self.settings_manager.values.get("vibration_enabled", True),
+        )
         self.game_state = GameState(self.event_bus)
         self.rule_engine = RuleEngine(self.game_state)
         register_demo_rules(self.rule_engine)
@@ -122,6 +141,7 @@ class Game:
         self.save_manager = SaveManager()
         self.main_menu = MainMenu()
         self.save_menu = SaveMenu(self.save_manager)
+        self.pause_menu = PauseMenu()
         self.opening_cg = OpeningCG(self.audio)
         self.ending_cg = EndingCG(self.audio)
         self.envoy_register = EnvoyRegister()
@@ -129,10 +149,16 @@ class Game:
         self._transition_target_scene: str | None = None
         self.mode = self.MODE_MAIN_MENU
         self.pending_save_mode = SAVE_MODE_LOAD
+        self.save_menu_return_mode = self.MODE_MAIN_MENU
+        self.settings_return_mode = self.MODE_MAIN_MENU
+        self.pause_return_mode: str | None = None
+        self.overlay_audio_mode = self.MODE_MAIN_MENU
         self.current_slot_id: int | None = None
         self.current_save_data: dict | None = None
         self.mainline = dict(self.DEFAULT_MAINLINE)
-        self.exit_confirm_open = False
+        self.repair_hall = RepairHall()
+        self.repair_door = RepairDoor()
+        self.checkpoint_notice = 0.0
         self.report_staging_active = False
         self.report_staging_timer = 0.0
         self.report_staging_duration = self.REPORT_STAGING_DURATION
@@ -171,7 +197,7 @@ class Game:
         # 月池本体必须保持硬碰撞；污染结局从池沿触发，不能要求玩家
         # 先穿进水面再按交互键。
         self.moon_pool_interaction_rect = self.moon_pool.rect.inflate(24, 24)
-        self.pound_table = PoundTable(740, 302)
+        self.pound_table = PoundTable(700, 302)
         self.world_objects = [
             self.palace_wall,
             self.moon_pool,
@@ -185,7 +211,16 @@ class Game:
         self.rule_book = RuleBook(self.event_bus, self.game_state)
         self.broken_jade_view = BrokenJadeView()
         self.death_screen = DeathScreen(self.event_bus, self.game_state, self.audio)
-        self.distortion = DistortionEffect(self.event_bus)
+        self.distortion = DistortionEffect(
+            self.event_bus,
+            shake_enabled=bool(self.settings_manager.values.get("vibration_enabled", True)),
+        )
+        self.settings_menu = SettingsMenu(
+            self.settings_manager,
+            self.audio,
+            self.vibration,
+            self.distortion,
+        )
         self.event_bus.subscribe(TREE_BLEEDING, self._on_tree_bleeding)
         self.event_bus.subscribe(VIOLATION_CHANGED, self._on_violation_changed)
         self.event_bus.subscribe(DIALOG_CHOICE_SELECTED, self._on_dialog_choice_selected)
@@ -215,8 +250,6 @@ class Game:
             self._toggle_fullscreen()
 
         if self.input_manager.quit_requested:
-            if self.mode in (self.MODE_HOME, self.MODE_TRANSITION, self.MODE_PLAYING, self.MODE_GUANGHAN):
-                self._save_current_slot()
             self.running = False
 
     def update(self, dt: float) -> None:
@@ -225,20 +258,34 @@ class Game:
         # current BGM until the target scene is committed, so a same-track
         # scene change never restarts the loop.
         self.audio.update(dt)
-        if self.mode != self.MODE_TRANSITION:
-            self.audio.sync_for_game_state(self.mode, self.mainline)
+        self._sync_audio_for_mode()
+        self.checkpoint_notice = max(0.0, self.checkpoint_notice - dt)
 
         if self.mode == self.MODE_MAIN_MENU:
             action = self.main_menu.update(dt, self.input_manager)
             self._handle_main_menu_action(action)
             return
 
+        if self.mode == self.MODE_SETTINGS:
+            action = self.settings_menu.update(dt, self.input_manager)
+            if action == SETTINGS_BACK:
+                self._close_settings()
+            return
+
+        if self.mode == self.MODE_PAUSE:
+            self._update_pause(dt)
+            return
+
         if self.mode == self.MODE_SAVE_MENU:
             selected_slot = self.save_menu.update(dt, self.input_manager)
             if self.save_menu.back_requested:
-                self.mode = self.MODE_MAIN_MENU
+                self.mode = self.save_menu_return_mode
+                self.save_menu.back_requested = False
             elif selected_slot is not None:
-                self._start_slot(selected_slot, force_new=self.pending_save_mode == SAVE_MODE_NEW)
+                if self.pending_save_mode == SAVE_MODE_SAVE:
+                    self._save_game_to_slot(selected_slot)
+                else:
+                    self._start_slot(selected_slot, force_new=self.pending_save_mode == SAVE_MODE_NEW)
             return
 
         if self.mode == self.MODE_OPENING:
@@ -264,19 +311,22 @@ class Game:
             self._update_guanghan(dt)
             return
 
+        if self.mode == self.MODE_REPAIR:
+            self._update_repair_hall(dt)
+            return
+
         self._update_playing(dt)
 
     def _update_home(self, dt: float) -> None:
         """更新穿越后、正式入宫前的 home 教程场景。"""
-        if self._update_exit_confirm():
-            self.distortion.update(dt)
+        if self._try_open_pause():
             return
 
         if self.dialog_box.active:
             was_rules_briefing_complete = self.home_tutorial.rules_briefing_complete
             self.dialog_box.update(dt, self.input_manager)
             if self.home_tutorial.rules_briefing_complete != was_rules_briefing_complete:
-                self._save_current_slot()
+                self._save_checkpoint("rules_read")
             self.distortion.update(dt)
             return
 
@@ -298,29 +348,221 @@ class Game:
         if not self.dialog_box.active:
             self.player.update(dt, self.input_manager, self.home_tutorial.get_collision_rects())
 
-        if (
-            self.home_tutorial.sign_read != was_sign_read
-            or self.home_tutorial.rules_briefing_complete != was_rules_briefing_complete
-        ):
-            self._save_current_slot()
+        if self.home_tutorial.rules_briefing_complete and not was_rules_briefing_complete:
+            self._save_checkpoint("rules_read")
 
         if self.home_tutorial.is_gate_entered(self.player.rect):
             self._finish_home_tutorial()
 
         self.distortion.update(dt)
 
+    def _enter_repair_hall(self) -> None:
+        """自由进入偏殿，不创建挑战前存档。"""
+        self.mode = self.MODE_REPAIR
+        self.dialog_box.active = False
+        self.repair_hall.reset(bool(self.mainline.get("repair_checked")))
+        self.player.rect.midbottom = RepairHall.SPAWN
+        self.player.position.xy = self.player.rect.topleft
+        self.player.facing = "up"
+        self.audio.sync_for_game_state(self.mode, self.mainline)
+
+    def _begin_repair_trial(self) -> None:
+        trial = self.repair_hall.trial
+        if trial.phase != "idle":
+            return
+        trial.brief()
+        for note_id, text in RepairHall.NOTES.items():
+            self.game_state.add_known_rule(note_id, text)
+        self.event_bus.emit(SHOW_DIALOG, speaker_id="repairman", lines=list(RepairHall.INTRO))
+
+    def _observe_repair_piece(self) -> None:
+        self.repair_hall.trial.record_observation()
+        note = self.repair_hall.observe_piece()
+        if note is not None:
+            self.game_state.add_known_rule(*note)
+
+    def _submit_repair_piece(self) -> None:
+        result = self.repair_hall.trial.submit()
+        if result in ("death", "sealing"):
+            self.repair_hall.choose_piece = False
+            self.dialog_box.active = False
+            self.rule_book.close()
+            self.audio.stop_repair_sounds()
+
+    def _update_repair_hall(self, dt: float) -> None:
+        hall, inputs = self.repair_hall, self.input_manager
+        trial = hall.trial
+        # Clock runs before every interaction, including inspection/dialogue/book overlays.
+        result = trial.tick(dt)
+        if result == "restore":
+            self._reset_after_death()
+            return
+        if result == "completed":
+            self.mainline["repair_checked"] = True
+            # Reaching a completed hall also proves the entrance has been
+            # opened, including legacy saves that entered the hall directly.
+            self.mainline["repair_door_open"] = True
+            self.audio.stop_repair_sounds()
+            self._save_checkpoint("repair_completed")
+            hall.say("已记：旧月裂片验明，修月封存已毕。", 5.0)
+        if trial.phase == "death":
+            self.dialog_box.active = False
+            self.rule_book.close()
+            if "silenced" not in hall.sounds_played:
+                self.audio.stop_repair_sounds()
+            hall.sounds_played.add("silenced")
+            if trial.elapsed >= .24 and "scare" not in hall.sounds_played:
+                hall.sounds_played.add("scare")
+                self.audio.play_spatial("repair_scare", gain=1.0)
+            return
+        if trial.phase == "sealing":
+            if trial.elapsed >= 2.8 and "box" not in hall.sounds_played:
+                hall.sounds_played.add("box")
+                self.audio.play_spatial("repair_chisel", gain=.85)
+            return
+        hall.update_ambience(max(0.0, dt), self.player.rect, self.audio)
+        if self.dialog_box.active:
+            self.dialog_box.update(dt, inputs)
+            if not self.dialog_box.active and trial.phase == "briefing":
+                trial.start()
+            return
+        if trial.phase == "briefing":
+            trial.start()
+        book_was_open = self.rule_book.is_open
+        self.rule_book.update(dt, inputs)
+        if book_was_open or self.rule_book.is_open:
+            trial.end_rotation()
+            return
+        if hall.choose_piece:
+            if inputs.was_key_pressed(pygame.K_a) or inputs.was_key_pressed(pygame.K_LEFT):
+                hall.piece_cursor = (hall.piece_cursor - 1) % 3
+            if inputs.was_key_pressed(pygame.K_d) or inputs.was_key_pressed(pygame.K_RIGHT):
+                hall.piece_cursor = (hall.piece_cursor + 1) % 3
+            if inputs.was_pressed(config.ACTION_QUIT):
+                hall.choose_piece = False
+            elif inputs.was_pressed(config.ACTION_INTERACT):
+                trial.pick_up(hall.piece_order[hall.piece_cursor])
+                hall.choose_piece = False
+                return
+        if trial.inspecting:
+            mouse_position = self._game_mouse_position()
+            if (inputs.was_mouse_pressed(1) and mouse_position is not None
+                    and hall.INSPECTION_DRAG_ZONE.collidepoint(mouse_position)):
+                trial.begin_rotation()
+            if trial.dragging and inputs.mouse_button_down(1):
+                mouse_motion = self._game_mouse_motion()
+                trial.drag_rotation(mouse_motion.x, mouse_motion.y)
+            if inputs.was_mouse_released(1):
+                trial.end_rotation()
+            self._observe_repair_piece()
+            if inputs.was_pressed(config.ACTION_INTERACT) or inputs.was_pressed(config.ACTION_QUIT):
+                trial.end_rotation()
+                trial.inspecting = False
+                hall.say("", 0.0)
+            return
+        if self._try_open_pause():
+            return
+        if inputs.was_pressed(config.ACTION_INTERACT):
+            target = hall.nearby(self.player.rect)
+            if target == "exit":
+                if trial.phase == "active":
+                    hall.say("验片未毕，守月人挡住了归路。封期仍在走。")
+                else:
+                    self.audio.stop_repair_sounds()
+                    self.mode = self.MODE_PLAYING
+                    self.player.rect.midbottom = RepairHall.COURTYARD_RETURN
+                    self.player.position.xy = self.player.rect.topleft
+                    self.player.facing = "right"
+                    # Keep the completed task checkpoint, but move its
+                    # recoverable location to the actual courtyard exit.
+                    self._save_current_slot()
+                return
+            if target == "table":
+                if trial.phase == "idle":
+                    self._begin_repair_trial()
+                elif trial.phase == "active":
+                    hall.choose_piece = True
+                    hall.piece_cursor = hall.slot_for_piece(trial.selected) if trial.selected is not None else 0
+                else:
+                    hall.say("今夜这一片，算是收好了。来使还有正事，去吧。")
+                return
+            if target == "tray":
+                if trial.phase == "active" and trial.selected is not None:
+                    self._submit_repair_piece()
+                else:
+                    hall.say("验盘空着。认定裂片后，在这里正式交片。")
+                return
+            if target == "statue":
+                lines = ["血从石像嘴角的细缝渗出，流入擦得很干净的浅盘。",
+                         "裂缝两端微微翘起。石像身上，还有几处已经补平的旧痕。",
+                         "守月人没有抬头：盘子莫挪，挪了要滴到地上。"]
+                self.game_state.add_known_rule("repair_statue", "渗血石像：" + "".join(lines))
+                if trial.selected == 2:
+                    lines.insert(2, "这道裂口的形状，像手里那片旧月。")
+                    self.game_state.add_known_rule(
+                        "repair_statue_match",
+                        "石像裂口的形状，像月片·" + hall.selected_slot_name() + "上的崩口。",
+                    )
+                self.event_bus.emit(SHOW_DIALOG, speaker_id="toad_statue", lines=lines)
+                return
+            if trial.selected is not None:
+                trial.in_light = hall.light_zone.colliderect(self.player.rect)
+                trial.inspecting = True
+                hall.say("", 0.0)
+                self._observe_repair_piece()
+                return
+        self.player.update(dt, inputs, hall.collisions(), RepairHall.SIZE)
+        trial.in_light = hall.light_zone.colliderect(self.player.rect)
+        self.distortion.update(dt)
+
+    def _draw_repair_hall(self) -> None:
+        offset = self._camera_offset()
+        self.repair_hall.draw(
+            self.game_surface, self.player, offset,
+            show_hints=not (self.dialog_box.active or self.rule_book.is_open),
+        )
+        if self.repair_hall.trial.phase not in ("death", "sealing"):
+            self.rule_book.draw(self.game_surface)
+            self.dialog_box.draw(self.game_surface)
+            if self.repair_hall.trial.phase == "active":
+                self.repair_hall.draw_timer(self.game_surface)
+
+    def _draw_repair_entrance(self, surface, offset) -> None:
+        self.repair_door.draw_world(surface, RepairHall.COURTYARD_ENTRY, offset, self.player.rect)
+
+    def _update_repair_door(self, dt):
+        result = self.repair_door.update(
+            dt,
+            self.input_manager,
+            can_turn=self.repair_door.LEFT_ZONE.colliderect(self.player.rect),
+            tree_bleeding=self.laurel_tree.bleeding,
+        )
+        if result == "opened":
+            self.mainline["repair_door_open"] = True
+            # Opening the entrance is a safe, non-event save. It records the
+            # current courtyard position without inventing a task checkpoint.
+            self._save_current_slot()
+            self.audio.play_spatial("cg_palace_transition", gain=.6)
+            self.audio.play_spatial("repair_drip", gain=.45)
+        elif result == "enter":
+            self._enter_repair_hall()
+        elif result == "aligned":
+            self.audio.play_spatial("repair_drip", gain=.35)
+        elif result == "turned":
+            self.audio.play_spatial("repair_chisel", gain=.3, pan=-.3)
+        return result
+
     def _update_guanghan(self, dt: float) -> None:
         """更新广寒宫内殿基础状态。"""
+        if self._try_open_pause():
+            return
         # 复命后的候月倒计时是流程时间，不因打开登记页、规则手册或复命字幕而暂停。
         if self._update_return_countdown(dt):
             self.distortion.update(dt)
             return
         if self.envoy_register.active:
             if self.envoy_register.update(self.input_manager, dt):
-                self._save_current_slot()
-            self.distortion.update(dt)
-            return
-        if self._update_exit_confirm():
+                self._save_checkpoint("envoy_registered")
             self.distortion.update(dt)
             return
         if self.report_staging_active:
@@ -364,8 +606,7 @@ class Game:
 
     def _update_playing(self, dt: float) -> None:
         """更新正式游玩状态。"""
-        if self._update_exit_confirm():
-            self.distortion.update(dt)
+        if self._try_open_pause():
             return
 
         if self.death_screen.active:
@@ -400,6 +641,27 @@ class Game:
         for npc in self.npcs:
             npc.update(dt, self.player.rect)
 
+        if self.repair_door.active:
+            result = self._update_repair_door(dt)
+            # The entrance mechanism is a live courtyard activity. The player
+            # can leave the left toad to escape Laurel's forbidden radius, but
+            # the angle hold only advances while they are back at the control.
+            # This is what makes the existing proximity rule part of the
+            # puzzle instead of a decorative status message.
+            if self.mode != self.MODE_PLAYING or not self.repair_door.active:
+                self.distortion.update(dt)
+                return
+            if not self.dialog_box.active:
+                self.player.update(
+                    dt,
+                    self.input_manager,
+                    self._get_collision_rects(),
+                    (config.COURTYARD_WIDTH, config.COURTYARD_HEIGHT),
+                )
+                self._update_rule_checks(dt)
+            self.distortion.update(dt)
+            return
+
         if self.report_staging_active:
             self._update_report_staging(dt)
             self.distortion.update(dt)
@@ -416,6 +678,22 @@ class Game:
 
         if self.input_manager.was_pressed(config.ACTION_INTERACT):
             self.player.trigger_interact_animation()
+            if self.repair_door.RIGHT_ZONE.colliderect(self.player.rect):
+                return
+            if self.repair_door.LEFT_ZONE.colliderect(self.player.rect):
+                if not self.repair_door.unlocked:
+                    self.repair_door.active = True
+                return
+            if RepairHall.COURTYARD_ENTRY.colliderect(self.player.rect):
+                if self.mainline.get("report_completed") or self.mainline.get("pending_pool_ending"):
+                    self.event_bus.emit(SHOW_DIALOG, speaker_id="repairman",
+                                        lines=["旧月已经封存。来使复命既毕，不必重验。"])
+                elif self.repair_door.unlocked:
+                    self._enter_repair_hall()
+                else:
+                    self.event_bus.emit(SHOW_DIALOG, speaker_id="courtyard_gate",
+                                        lines=["两尊托灯石蟾分立门旁，右蟾朝着门内。", "左侧石座下露出一道转槽，像是要把它转到与右蟾同向。"])
+                return
             if self.mainline.get("pending_pool_ending") and self.moon_pool_interaction_rect.colliderect(
                 self.player.rect
             ):
@@ -464,8 +742,18 @@ class Game:
         """绘制当前流程状态，并等比缩放到当前显示区域。"""
         if self.mode == self.MODE_MAIN_MENU:
             self.main_menu.draw(self.game_surface)
+        elif self.mode == self.MODE_SETTINGS:
+            self._draw_settings_background()
+            self.settings_menu.draw(self.game_surface)
+        elif self.mode == self.MODE_PAUSE:
+            self._draw_gameplay_context(self.pause_return_mode)
+            self.pause_menu.draw(self.game_surface)
         elif self.mode == self.MODE_SAVE_MENU:
-            self.save_menu.draw(self.game_surface)
+            if self.save_menu_return_mode == self.MODE_PAUSE:
+                self._draw_gameplay_context(self.overlay_audio_mode)
+                self.save_menu.draw(self.game_surface, overlay=True)
+            else:
+                self.save_menu.draw(self.game_surface)
         elif self.mode == self.MODE_OPENING:
             self.opening_cg.draw(self.game_surface)
         elif self.mode == self.MODE_TRANSITION:
@@ -474,12 +762,20 @@ class Game:
             self._draw_home()
         elif self.mode == self.MODE_GUANGHAN:
             self._draw_guanghan()
+        elif self.mode == self.MODE_REPAIR:
+            self._draw_repair_hall()
         elif self.mode == self.MODE_ENDING_CG:
             self.ending_cg.draw(self.game_surface)
         else:
             self._draw_playing()
 
-        self._draw_exit_confirm(self.game_surface)
+        show_checkpoint = self.checkpoint_notice > 0 and self.mode in (
+            self.MODE_HOME, self.MODE_PLAYING, self.MODE_REPAIR, self.MODE_GUANGHAN)
+        if self.mode == self.MODE_REPAIR:
+            show_checkpoint = show_checkpoint and self.repair_hall.trial.phase in ("idle", "complete")
+        if show_checkpoint and not self.repair_door.active:
+            draw_filled_rect(self.game_surface, (340, 246, 132, 18), palette.BLACK)
+            render_text(self.game_surface, "事件完成 · 已存档", 346, 249, 11, palette.PALE_MOON)
 
         target_rect = self._scaled_game_rect(self.display_surface.get_size())
         scaled = pygame.transform.scale(
@@ -487,7 +783,14 @@ class Game:
             target_rect.size,
         )
         self.display_surface.fill(palette.BLACK)
-        self.display_surface.blit(scaled, target_rect)
+        display_rect = target_rect
+        if self.mode == self.MODE_TRANSITION:
+            scale = target_rect.width / config.SCREEN_WIDTH
+            display_rect = target_rect.move(
+                round(self.distortion.camera_offset.x * scale),
+                round(self.distortion.camera_offset.y * scale),
+            )
+        self.display_surface.blit(scaled, display_rect)
         pygame.display.flip()
 
     def _set_display_mode(self, fullscreen: bool) -> pygame.Surface:
@@ -495,14 +798,17 @@ class Game:
         if fullscreen:
             surface = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         else:
-            surface = pygame.display.set_mode(self.windowed_size)
+            surface = pygame.display.set_mode(self.windowed_size, pygame.RESIZABLE)
         pygame.display.set_caption(config.WINDOW_TITLE)
         return surface
 
     def _toggle_fullscreen(self) -> None:
         """在普通窗口和无标题栏全屏之间切换。"""
-        self.fullscreen = not self.fullscreen
-        self.display_surface = self._set_display_mode(self.fullscreen)
+        if not self.fullscreen:
+            self.windowed_size = self.display_surface.get_size()
+        fullscreen = not self.fullscreen
+        self.display_surface = self._set_display_mode(fullscreen)
+        self.fullscreen = fullscreen
 
     @staticmethod
     def _scaled_game_rect(display_size: tuple[int, int]) -> pygame.Rect:
@@ -518,6 +824,27 @@ class Game:
         y = (display_height - scaled_height) // 2
         return pygame.Rect(x, y, scaled_width, scaled_height)
 
+    def _game_mouse_position(self) -> pygame.Vector2 | None:
+        """Map the display mouse position into the fixed 480×270 game surface."""
+        position = self.input_manager.mouse_position
+        if position is None:
+            return None
+        target = self._scaled_game_rect(self.display_surface.get_size())
+        if not target.collidepoint(position):
+            return None
+        return pygame.Vector2(
+            (position[0] - target.x) * config.SCREEN_WIDTH / target.width,
+            (position[1] - target.y) * config.SCREEN_HEIGHT / target.height,
+        )
+
+    def _game_mouse_motion(self) -> pygame.Vector2:
+        """Map per-frame display mouse motion into fixed game-surface pixels."""
+        target = self._scaled_game_rect(self.display_surface.get_size())
+        return pygame.Vector2(
+            self.input_manager.mouse_motion.x * config.SCREEN_WIDTH / target.width,
+            self.input_manager.mouse_motion.y * config.SCREEN_HEIGHT / target.height,
+        )
+
     def _scene_world_size(self, mode: str | None = None) -> tuple[int, int]:
         """返回当前剧情场景的独立世界尺寸。"""
         scene = mode or self.mode
@@ -525,17 +852,21 @@ class Game:
             return config.COURTYARD_WIDTH, config.COURTYARD_HEIGHT
         if scene == self.MODE_GUANGHAN:
             return config.GUANGHAN_WIDTH, config.GUANGHAN_HEIGHT
+        if scene == self.MODE_REPAIR:
+            return RepairHall.SIZE
         return config.MAP_WIDTH, config.MAP_HEIGHT
 
     def _camera_offset(self) -> tuple[int, int]:
         """返回跟随玩家且被大地图边界限制的世界偏移。"""
         world_width, world_height = self._scene_world_size()
         camera_x = self.player.rect.centerx - config.SCREEN_WIDTH // 2
-        if self.mode == self.MODE_GUANGHAN:
+        if self.mode in (self.MODE_GUANGHAN, self.MODE_REPAIR):
             # 内殿纵深大于视口；把来使放在画面下方，保留北侧帷幕和复命人物。
             camera_y = self.player.rect.centery - int(config.SCREEN_HEIGHT * 0.8)
         else:
             camera_y = self.player.rect.centery - config.SCREEN_HEIGHT // 2
+        if self.mode == self.MODE_REPAIR:
+            camera_y = min(60, camera_y)
         camera_x = max(0, min(world_width - config.SCREEN_WIDTH, camera_x))
         camera_y = max(0, min(world_height - config.SCREEN_HEIGHT, camera_y))
         distortion_x = round(self.distortion.camera_offset.x)
@@ -548,6 +879,7 @@ class Game:
         camera_offset = self._camera_offset()
         self.palace_wall.set_gate_open(self._office_checks_complete())
         self.palace_wall.draw(self.game_surface, camera_offset)
+        self._draw_repair_entrance(self.game_surface, camera_offset)
         self._draw_palace_entry_marker(self.game_surface, camera_offset)
         show_pool_reflection = self._player_faces_pool()
         reflection_sprite = None
@@ -574,7 +906,10 @@ class Game:
         # The mortar is a static prop: draw its rear before depth sorting and
         # its front rim after the body/hand overlay to prevent repetition.
         self.pound_table.draw_back(self.game_surface, camera_offset)
-        depth_items = [(self.laurel_tree.get_collision_rect().bottom, self.laurel_tree.draw)]
+        depth_items = [
+            (self.laurel_tree.get_collision_rect().bottom, self.laurel_tree.draw),
+            (self.pound_table.get_collision_rect().bottom, self.pound_table.draw_front),
+        ]
         depth_items.extend((npc.get_collision_rect().bottom, npc.draw) for npc in self.npcs)
         depth_items.append(
             (
@@ -584,10 +919,19 @@ class Game:
         )
         for _, draw_item in sorted(depth_items, key=lambda item: item[0]):
             draw_item(self.game_surface, camera_offset)
-        self.pound_table.draw_front(self.game_surface, camera_offset)
         self.distortion.draw_overlay(self.game_surface)
         self._draw_interaction_hint(self.game_surface)
         self._draw_status_ui(self.game_surface)
+        bleed_remaining = (
+            max(0.0, self.laurel_tree.BLEED_DURATION - self.laurel_tree.bleed_time)
+            if self.laurel_tree.bleeding else 0.0
+        )
+        self.repair_door.draw_active_hint(
+            self.game_surface,
+            tree_bleeding=self.laurel_tree.bleeding,
+            bleed_remaining=bleed_remaining,
+            can_turn=self.repair_door.LEFT_ZONE.colliderect(self.player.rect),
+        )
         self._draw_return_countdown_hud(self.game_surface)
         self.rule_book.draw(self.game_surface)
         self.dialog_box.draw(self.game_surface)
@@ -599,6 +943,10 @@ class Game:
         camera_offset = self._camera_offset()
         if self._draw_guanghan_background(camera_offset):
             self._draw_guanghan_actors(camera_offset)
+            draw_scenery_foreground(
+                self.game_surface, load_image(self.guanghan_walkable_background),
+                HALL_LANTERNS, camera_offset, self.player.rect.bottom,
+            )
         else:
             self.game_surface.fill(palette.BLACK)
             draw_filled_rect(self.game_surface, (0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT), palette.NIGHT_BLACK)
@@ -746,8 +1094,9 @@ class Game:
                 240,
             ),
             pygame.Rect(self.guanghan_exit_rect.left, 480, self.guanghan_exit_rect.width, 240),
-            pygame.Rect(330, 92, 300, 86),
-            pygame.Rect(350, 178, 260, 62),
+            pygame.Rect(348, 112, 244, 62),
+            pygame.Rect(464, 172, 32, 12),
+            *(pygame.Rect(prop.footprint) for prop in HALL_LANTERNS),
             self.guanghan_register_collision_rect.copy(),
         ]
 
@@ -772,7 +1121,7 @@ class Game:
             shade.fill((*palette.BLACK, 170))
             surface.blit(shade, (0, 0))
 
-        caption = self.pending_report_dialog[2] if self.pending_report_dialog else "来使递上两份职司记录。"
+        caption = self.pending_report_dialog[2] if self.pending_report_dialog else "来使呈上伐桂、捣药与修月查验。"
         panel = pygame.Surface((config.SCREEN_WIDTH, 34), pygame.SRCALPHA)
         panel.fill((*palette.BLACK, 182))
         # Keep the bottom 34 px as a dedicated safe band; the handoff props
@@ -795,25 +1144,156 @@ class Game:
         camera_offset = self._camera_offset()
         self.home_tutorial.draw(self.game_surface, camera_offset)
         self.player.draw(self.game_surface, camera_offset)
+        self.home_tutorial.draw_foreground(self.game_surface, camera_offset, self.player.rect.bottom)
         self.distortion.draw_overlay(self.game_surface)
         self._draw_home_hint(self.game_surface, camera_offset)
         self._draw_home_status_ui(self.game_surface)
         self.rule_book.draw(self.game_surface)
         self.dialog_box.draw(self.game_surface)
 
+    def _draw_gameplay_context(self, scene_mode: str | None) -> None:
+        """在暂停/设置/存档覆盖层下绘制被冻结的可玩场景。"""
+        scene = scene_mode if scene_mode in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN, self.MODE_REPAIR) else None
+        if scene is None:
+            self.game_surface.fill(palette.NIGHT_BLACK)
+            return
+
+        current_mode = self.mode
+        self.mode = scene
+        try:
+            if scene == self.MODE_HOME:
+                self._draw_home()
+            elif scene == self.MODE_GUANGHAN:
+                self._draw_guanghan()
+            elif scene == self.MODE_REPAIR:
+                self._draw_repair_hall()
+            else:
+                self._draw_playing()
+        finally:
+            self.mode = current_mode
+
+    def _draw_settings_background(self) -> None:
+        """设置界面复用主菜单或暂停时的场景背景。"""
+        if self.settings_return_mode == self.MODE_MAIN_MENU:
+            self.main_menu.draw(self.game_surface)
+        else:
+            self._draw_gameplay_context(self.overlay_audio_mode)
+
+    def _sync_audio_for_mode(self) -> None:
+        """让覆盖层沿用来源场景的 BGM，不因打开 UI 触发换曲。"""
+        if self.mode in (self.MODE_PAUSE, self.MODE_SETTINGS, self.MODE_SAVE_MENU):
+            route_mode = self.overlay_audio_mode
+        else:
+            route_mode = self.mode
+        if route_mode == self.MODE_TRANSITION:
+            return
+        self.audio.sync_for_game_state(route_mode, self.mainline)
+
+    def _has_active_game_context(self) -> bool:
+        """判断菜单叠层下是否仍有可恢复的游戏场景。"""
+        if self.mode in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN, self.MODE_REPAIR, self.MODE_TRANSITION, self.MODE_PAUSE):
+            return True
+        return self.mode in (self.MODE_SETTINGS, self.MODE_SAVE_MENU) and self.overlay_audio_mode in (
+            self.MODE_HOME,
+            self.MODE_PLAYING,
+            self.MODE_GUANGHAN,
+            self.MODE_REPAIR,
+        )
+
+    def _higher_priority_ui_active(self) -> bool:
+        """暂停键不能抢占 CG、对话、登记、规则书、死亡等活动 UI。"""
+        return bool(
+            self.dialog_box.active
+            or self.rule_book.is_open
+            or self.broken_jade_view.active
+            or self.envoy_register.active
+            or self.report_staging_active
+            or self.death_screen.active
+            or self.game_state.is_dead()
+            or self.repair_door.active
+        )
+
+    def _try_open_pause(self) -> bool:
+        """在可玩场景的最低 UI 优先级处响应 Esc。"""
+        if self.mode not in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN, self.MODE_REPAIR):
+            return False
+        if self._higher_priority_ui_active() or not self.input_manager.was_pressed(config.ACTION_QUIT):
+            return False
+        self.pause_return_mode = self.mode
+        self.overlay_audio_mode = self.mode
+        self.pause_menu.open()
+        self.mode = self.MODE_PAUSE
+        return True
+
+    def _update_pause(self, dt: float) -> None:
+        """暂停菜单只推进菜单本身；底层游戏逻辑和时钟保持不动。"""
+        action = self.pause_menu.update(dt, self.input_manager)
+        if action == PAUSE_RESUME:
+            self.mode = self.pause_return_mode or self.MODE_PLAYING
+        elif action == PAUSE_SAVE:
+            self._open_save_menu_from_pause(SAVE_MODE_SAVE)
+        elif action == PAUSE_LOAD:
+            self._open_save_menu_from_pause(SAVE_MODE_LOAD)
+        elif action == PAUSE_SETTINGS:
+            self._open_settings(self.MODE_PAUSE)
+        elif action == PAUSE_MAIN_MENU:
+            self._return_to_main_menu_from_pause()
+
+    def _open_settings(self, return_mode: str) -> None:
+        """从主菜单或暂停菜单打开同一个设置实例。"""
+        self.settings_return_mode = return_mode
+        if return_mode == self.MODE_MAIN_MENU:
+            self.overlay_audio_mode = self.MODE_MAIN_MENU
+        else:
+            self.overlay_audio_mode = self.pause_return_mode or self.MODE_PLAYING
+        self.settings_menu.open()
+        self.mode = self.MODE_SETTINGS
+
+    def _close_settings(self) -> None:
+        """按 Esc/返回键回到进入设置前的界面。"""
+        if self.settings_return_mode == self.MODE_PAUSE:
+            self.mode = self.MODE_PAUSE
+        else:
+            self.mode = self.MODE_MAIN_MENU
+
+    def _open_save_menu_from_pause(self, mode: str) -> None:
+        """从暂停菜单打开保存或读档页，并保留原场景音频上下文。"""
+        self.pending_save_mode = mode
+        self.save_menu_return_mode = self.MODE_PAUSE
+        self.overlay_audio_mode = self.pause_return_mode or self.MODE_PLAYING
+        self.save_menu.open(mode, back_destination="暂停菜单")
+        self.mode = self.MODE_SAVE_MENU
+
+    def _return_to_main_menu_from_pause(self) -> None:
+        """返回菜单保留最近事件存档，不把未完成挑战写入槽位。"""
+        self.audio.stop_repair_sounds()
+        self.pause_return_mode = None
+        self.save_menu_return_mode = self.MODE_MAIN_MENU
+        self.settings_return_mode = self.MODE_MAIN_MENU
+        self.overlay_audio_mode = self.MODE_MAIN_MENU
+        self.mode = self.MODE_MAIN_MENU
+
     def _handle_main_menu_action(self, action: str | None) -> None:
         """处理主菜单动作。"""
         if action == MENU_NEW_GAME:
             self.pending_save_mode = SAVE_MODE_NEW
-            self.save_menu.open(SAVE_MODE_NEW)
+            self.save_menu_return_mode = self.MODE_MAIN_MENU
+            self.overlay_audio_mode = self.MODE_MAIN_MENU
+            self.save_menu.open(SAVE_MODE_NEW, back_destination="主菜单")
             self.mode = self.MODE_SAVE_MENU
         elif action == MENU_LOAD_GAME:
             self.pending_save_mode = SAVE_MODE_LOAD
-            self.save_menu.open(SAVE_MODE_LOAD)
+            self.save_menu_return_mode = self.MODE_MAIN_MENU
+            self.overlay_audio_mode = self.MODE_MAIN_MENU
+            self.save_menu.open(SAVE_MODE_LOAD, back_destination="主菜单")
             self.mode = self.MODE_SAVE_MENU
+        elif action == MENU_SETTINGS:
+            self._open_settings(self.MODE_MAIN_MENU)
         elif action == MENU_DELETE_SAVE:
             self.pending_save_mode = SAVE_MODE_DELETE
-            self.save_menu.open(SAVE_MODE_DELETE)
+            self.save_menu_return_mode = self.MODE_MAIN_MENU
+            self.overlay_audio_mode = self.MODE_MAIN_MENU
+            self.save_menu.open(SAVE_MODE_DELETE, back_destination="主菜单")
             self.mode = self.MODE_SAVE_MENU
         elif action == MENU_QUIT:
             self.running = False
@@ -843,12 +1323,13 @@ class Game:
 
         scene = self._saved_scene(self.current_save_data)
         if scene == self.MODE_HOME:
-            self.exit_confirm_open = False
             self.mode = self.MODE_HOME
             self.audio.sync_for_game_state(self.mode, self.mainline)
         elif scene == self.MODE_GUANGHAN:
-            self.exit_confirm_open = False
             self.mode = self.MODE_GUANGHAN
+            self.audio.sync_for_game_state(self.mode, self.mainline)
+        elif scene == self.MODE_REPAIR:
+            self.mode = self.MODE_REPAIR
             self.audio.sync_for_game_state(self.mode, self.mainline)
         else:
             self._enter_courtyard()
@@ -859,18 +1340,16 @@ class Game:
             return
         self.current_save_data["opening_seen"] = True
         self._enter_home()
-        self._save_current_slot(opening_seen=True)
+        self._save_checkpoint("arrival", opening_seen=True)
 
     def _enter_home(self) -> None:
         """进入穿越后的 home 教程地图。"""
-        self.exit_confirm_open = False
         self.mode = self.MODE_HOME
         self.audio.sync_for_game_state(self.mode, self.mainline)
         self.home_tutorial.reset_player_to_spawn(self.player)
 
     def _enter_courtyard(self, *, reset_player: bool = False) -> None:
         """进入现有月宫前院正式游戏区。"""
-        self.exit_confirm_open = False
         self.mode = self.MODE_PLAYING
         self.audio.sync_for_game_state(self.mode, self.mainline)
         if reset_player:
@@ -881,15 +1360,6 @@ class Game:
 
     def _finish_home_tutorial(self) -> None:
         """完成 home 教程并播放进入前院的月门转场。"""
-        self._save_current_slot(
-            home_tutorial_done=True,
-            home_tutorial=self.home_tutorial.collect_save_data(),
-            player={
-                "x": config.PLAYER_START_X,
-                "y": config.PLAYER_START_Y,
-                "facing": "down",
-            },
-        )
         self._start_scene_transition(
             self.MODE_PLAYING,
             self._complete_home_transition,
@@ -899,7 +1369,7 @@ class Game:
     def _complete_home_transition(self) -> None:
         """转场停顿结束后进入月宫前院。"""
         self._enter_courtyard(reset_player=True)
-        self._save_current_slot(
+        self._save_checkpoint("entered_courtyard",
             home_tutorial_done=True,
             home_tutorial=self.home_tutorial.collect_save_data(),
         )
@@ -912,17 +1382,20 @@ class Game:
     ) -> None:
         """在可玩场景之间统一播放一次转场动画。"""
         source_scene = self.mode
-        self.exit_confirm_open = False
         self._transition_target_scene = target_scene
         self.mode = self.MODE_TRANSITION
-        # 转场中退出时，存档场景会按目标场景归一化；坐标也必须同步
-        # 写成目标场景的安全出生点，不能把旧场景坐标带进新地图。
-        self._save_current_slot(player=self._transition_player_state(target_scene, source_scene))
+        # 转场不是任务完成事件，退出或死亡均保留之前的存档点。
         self.scene_transition.start(
             lambda: self._complete_scene_transition(target_scene, on_complete),
             caption,
-            on_found=self.audio.play_transition_found,
+            on_found=self._play_transition_found,
         )
+
+    def _play_transition_found(self) -> None:
+        """同步播放转场发现音效和可选的手柄震动。"""
+        self.audio.play_transition_found()
+        self.vibration.trigger(VIBRATION_TRANSITION_FOUND)
+        self.distortion.start_shake(4.0, 0.22)
 
     def _transition_player_state(self, target_scene: str, source_scene: str) -> dict[str, object]:
         """返回转场中断后可安全恢复的目标场景玩家状态。"""
@@ -966,8 +1439,10 @@ class Game:
 
     def _update_transition(self, dt: float) -> None:
         """推进场景转场，满进度停顿后执行切场景回调。"""
-        if self._update_exit_confirm():
-            return
+        # Update existing shake before advancing the screen-only transition so
+        # a reveal callback that starts a new shake is not consumed by a large
+        # catch-up dt in the same frame.
+        self.distortion.update(dt)
         if self._transition_target_scene == self.MODE_PLAYING and self._update_return_countdown(dt):
             self.scene_transition.active = False
             self._transition_target_scene = None
@@ -989,6 +1464,12 @@ class Game:
         self.home_tutorial.apply_save_data(data)
         self.mainline = dict(self.DEFAULT_MAINLINE)
         self.mainline.update(data.get("mainline", {}))
+        self.repair_hall.reset(bool(self.mainline.get("repair_checked")))
+        self.repair_door.reset(bool(self.mainline.get("repair_door_open") or self.mainline.get("repair_checked")))
+        # 已读旧规条也同步新增的修月主线，不要求旧玩家重读告示牌。
+        if self.home_tutorial.sign_read:
+            self.game_state.known_rules.update(BASIC_RULES)
+            self.rule_book.rules = dict(self.game_state.known_rules)
         self.broken_jade_view.acquired = bool(self.mainline.get("broken_jade_obtained", False))
         self.broken_jade_view.active = False
         self.rule_book.set_broken_jade_obtained(self.broken_jade_view.acquired)
@@ -1008,7 +1489,6 @@ class Game:
         self.rule_book.close()
         self.death_screen.active = self.game_state.is_dead()
         self.death_screen.fade_timer = 0.0
-        self.exit_confirm_open = False
         self.report_staging_active = False
         self.report_staging_timer = 0.0
         self.pending_report_dialog = None
@@ -1018,7 +1498,7 @@ class Game:
 
     def _migrate_save_data(self, data: dict) -> dict:
         """兼容早期平铺字段，并把已离宫存档的旧倒计时收束为稳定状态。"""
-        migrated = dict(data)
+        migrated = deepcopy(data)
 
         envoy_register = migrated.get("envoy_register")
         if not isinstance(envoy_register, dict):
@@ -1042,6 +1522,18 @@ class Game:
         ):
             if key not in mainline and key in migrated:
                 mainline[key] = migrated[key]
+
+        if "repair_checked" not in mainline:
+            # 先迁移旧版平铺复命字段，再判断是否需要补做新增主线。
+            mainline["repair_checked"] = bool(mainline.get("report_completed")
+                                               or mainline.get("pending_pool_ending")
+                                               or mainline.get("ending"))
+        if (migrated.get("scene") == self.MODE_GUANGHAN and not mainline.get("repair_checked")
+                and not mainline.get("report_completed") and not mainline.get("pending_pool_ending")):
+            migrated["scene"] = self.MODE_PLAYING
+            rect = pygame.Rect(0, 0, *config.PLAYER_SIZE)
+            rect.midbottom = config.COURTYARD_NORTH_SPAWN
+            migrated["player"] = {"x": rect.x, "y": rect.y, "facing": "down"}
 
         if "handoff_completed" not in mainline:
             # Old saves cannot resume the transient Chang'e dialogue. Once a
@@ -1096,6 +1588,10 @@ class Game:
         """切换槽位时清除不会写入存档的动画、交互和音频状态。"""
         self.audio.stop_ambient()
         self.audio.stop_cg_sounds()
+        self.audio.stop_repair_sounds()
+        self.repair_hall.reset()
+        self.repair_door.reset()
+        self.checkpoint_notice = 0.0
         self.opening_cg.active = False
         self.ending_cg.active = False
         self.scene_transition.active = False
@@ -1112,6 +1608,7 @@ class Game:
         self.yutu.current_frame = 0
         self.moon_pool._time = 0.0
         self.moon_pool.reflection_flash_timer = 0.0
+        self.moon_pool.gaze_progress = 0.0
         self.laurel_tree._time = 0.0
         self.palace_wall._time = 0.0
         self._chang_e_time = 0.0
@@ -1151,8 +1648,11 @@ class Game:
 
     def _current_save_scene(self, previous_data: dict) -> str:
         """把临时 UI/转场模式归一化为可恢复的剧情场景。"""
-        if self.mode in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN):
+        if self.mode in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN, self.MODE_REPAIR):
             return self.mode
+        if self.mode in (self.MODE_PAUSE, self.MODE_SETTINGS, self.MODE_SAVE_MENU):
+            if self.overlay_audio_mode in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN, self.MODE_REPAIR):
+                return self.overlay_audio_mode
         if self.mode == self.MODE_TRANSITION:
             if self._transition_target_scene in (
                 self.MODE_HOME,
@@ -1162,14 +1662,14 @@ class Game:
                 return self._transition_target_scene
             return self.MODE_PLAYING
         previous_scene = previous_data.get("scene")
-        if previous_scene in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN):
+        if previous_scene in (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN, self.MODE_REPAIR):
             return previous_scene
         return self.MODE_HOME if not previous_data.get("home_tutorial_done", False) else self.MODE_PLAYING
 
     def _saved_scene(self, data: dict) -> str:
         """读取显式场景；旧存档根据教程和复命状态做保守迁移。"""
         scene = data.get("scene")
-        valid_scenes = (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN)
+        valid_scenes = (self.MODE_HOME, self.MODE_PLAYING, self.MODE_GUANGHAN, self.MODE_REPAIR)
         if scene in valid_scenes:
             return scene
         if not data.get("home_tutorial_done", False):
@@ -1189,41 +1689,23 @@ class Game:
         )
         self.save_menu.refresh()
 
-    def _update_exit_confirm(self) -> bool:
-        """Handle the in-game save-and-exit confirmation overlay."""
-        if not self.exit_confirm_open:
-            if self.input_manager.was_pressed(config.ACTION_QUIT):
-                self.exit_confirm_open = True
-                self._save_current_slot()
-                return True
-            return False
-
-        if self.input_manager.was_pressed(config.ACTION_QUIT) or self.input_manager.was_pressed(config.ACTION_RESTART):
-            self._save_current_slot()
-            self.running = False
-            return True
-
-        if self.input_manager.was_pressed(config.ACTION_INTERACT):
-            self.exit_confirm_open = False
-            return True
-
-        return True
-
-    def _draw_exit_confirm(self, surface: pygame.Surface) -> None:
-        """Draw the save-and-exit confirmation overlay."""
-        if not self.exit_confirm_open:
+    def _save_checkpoint(self, checkpoint_id: str, **overrides) -> None:
+        """每个完成事件只保存一次；挑战的临时状态永远不序列化。"""
+        completed = list((self.current_save_data or {}).get("checkpoint_events", []))
+        if checkpoint_id in completed:
             return
+        completed.append(checkpoint_id)
+        self._save_current_slot(checkpoint_id=checkpoint_id, checkpoint_events=completed,
+                                checkpoint_version=1, **overrides)
+        self.checkpoint_notice = 3.0
 
-        shade = pygame.Surface((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA)
-        shade.fill((0, 0, 0, 118))
-        surface.blit(shade, (0, 0))
-
-        panel = pygame.Rect(58, 72, 204, 72)
-        draw_filled_rect(surface, panel, palette.BLACK)
-        draw_double_rect(surface, panel, palette.MOON_WHITE, palette.DARK_BLOOD)
-        render_text(surface, "已自动存档", panel.x + 14, panel.y + 12, 14, palette.MOON_WHITE)
-        render_text(surface, "E 继续游戏", panel.x + 14, panel.y + 34, 12, palette.PALE_MOON)
-        render_text(surface, "Esc / R 保存并退出", panel.x + 14, panel.y + 50, 12, palette.MOON_WHITE)
+    def _save_game_to_slot(self, slot_id: int) -> None:
+        """手动保存复制最近事件存档，不能在限时任务中制造额外检查点。"""
+        payload = deepcopy(self.current_save_data or self.save_manager.default_save(slot_id))
+        self.current_slot_id = slot_id
+        self.current_save_data = self.save_manager.save(slot_id, payload)
+        self.save_menu.refresh()
+        self.save_menu.show_message(f"槽位 {slot_id} 已保存最近事件")
 
     def _draw_home_hint(self, surface: pygame.Surface, camera_offset: tuple[int, int]) -> None:
         """绘制 home 场景中的 E 交互提示。"""
@@ -1270,6 +1752,7 @@ class Game:
 
     def _setup_rule_zones(self) -> None:
         """创建 Demo 规则触发区。"""
+        self.moon_pool.gaze_progress = 0.0
         tree_rule_center, tree_rule_radius = self.laurel_tree.get_rule_circle()
         self.tree_bow_zone = CircularTriggerZone(
             tree_rule_center,
@@ -1288,8 +1771,9 @@ class Game:
         self.yutu_eye_zone = TriggerZone(
             self.yutu.interaction_rect.inflate(12, 12),
             RULE_NO_EYE_CONTACT,
-            trigger_type="inside",
+            trigger_type="stay",
             cooldown=1.5,
+            required_stay=0.65,
         )
         self.palace_run_zone = TriggerZone(
             pygame.Rect(0, self.palace_wall.get_collision_rect().bottom, config.COURTYARD_WIDTH, 40),
@@ -1323,7 +1807,9 @@ class Game:
 
         staring_reflection = not self.player.is_moving() and self._player_faces_pool()
         pool_target = self.player.rect if staring_reflection else pygame.Rect(-9999, -9999, 1, 1)
-        if self.pool_reflection_zone.update(dt, pool_target):
+        pool_triggered = self.pool_reflection_zone.update(dt, pool_target)
+        self.moon_pool.gaze_progress = self.pool_reflection_zone.stay_progress
+        if pool_triggered:
             self.moon_pool.flash_reflection()
             first_broken_jade_acquisition = not self.mainline.get("broken_jade_obtained", False)
             if first_broken_jade_acquisition:
@@ -1338,30 +1824,43 @@ class Game:
                 {"staring_reflection": True},
             )
             if first_broken_jade_acquisition:
-                self._save_current_slot()
+                # Collection is a checkpoint, but a third-violation snapshot must
+                # never reload dead or immediately gaze into the same pool again.
+                safe_rect = self.player.rect.copy()
+                safe_rect.midtop = (self.moon_pool.rect.centerx, self.moon_pool.rect.bottom + 12)
+                self._save_checkpoint("broken_jade_obtained",
+                    violation_count=min(self.game_state.violation_count, 2),
+                    player={"x": safe_rect.x, "y": safe_rect.y, "facing": "down"})
             if self.game_state.is_dead():
                 # Death owns input/update flow from this point onward; the
                 # acquisition state remains committed and the pickup overlay
                 # stays observable until the death restart closes it.
                 return
 
-        if self.yutu_eye_zone.update(dt, self.player.rect):
+        eye_contact = (
+            self.yutu.is_pounding
+            and self._is_player_in_yutu_front_arc()
+            and is_facing_rect(self.player.rect, self.player.facing, self.yutu.get_collision_rect())
+        )
+        eye_target = self.player.rect if eye_contact else pygame.Rect(-9999, -9999, 1, 1)
+        if self.yutu_eye_zone.update(dt, eye_target):
             self.rule_engine.check_rule(
                 RULE_NO_EYE_CONTACT,
                 {
-                    "yutu_pounding": self.yutu.is_pounding and self._is_player_in_yutu_front_arc(),
-                    "facing_yutu": is_facing_rect(self.player.rect, self.player.facing, self.yutu.rect),
+                    "yutu_pounding": True,
+                    "facing_yutu": True,
                 },
             )
             if self.game_state.is_dead():
                 return
 
-        if self.palace_run_zone.update(dt, self.player.rect):
+        running = self.input_manager.is_pressed(config.ACTION_RUN) and self.player.is_moving()
+        run_target = self.player.rect if running else pygame.Rect(-9999, -9999, 1, 1)
+        if self.palace_run_zone.update(dt, run_target):
             self.rule_engine.check_pseudo_rule(
                 PSEUDO_RULE_YUTU_WATCH,
                 {
-                    "running_near_palace": self.input_manager.is_pressed(config.ACTION_RUN)
-                    and self.player.is_moving()
+                    "running_near_palace": True
                 },
             )
             if self.game_state.is_dead():
@@ -1412,12 +1911,16 @@ class Game:
             return True
 
         if not self._office_checks_complete():
+            missing = [name for key, name in (("wugang_checked", "吴刚伐桂"),
+                       ("yutu_checked", "玉兔捣药"), ("repair_checked", "偏殿修月"))
+                       if not self.mainline.get(key)]
             self.event_bus.emit(
                 SHOW_DIALOG,
                 speaker_id="palace_gate",
                 lines=[
                     "宫门里的月光没有让路。",
                     "验职未齐，广寒宫不受复命。",
+                    "尚缺：" + "、".join(missing) + "。",
                 ],
             )
             return True
@@ -1430,21 +1933,19 @@ class Game:
         return True
 
     def _office_checks_complete(self) -> bool:
-        """两项职司检查均完成时，宫门才会开启。"""
+        """伐桂、捣药、修月三项均完成时，广寒宫才接受复命。"""
         return not self.game_state.is_dead() and bool(
-            self.mainline["wugang_checked"] and self.mainline["yutu_checked"]
+            self.mainline["wugang_checked"] and self.mainline["yutu_checked"] and self.mainline["repair_checked"]
         )
 
     def _enter_guanghan(self) -> None:
         """进入广寒宫内殿。"""
-        self.exit_confirm_open = False
         self.mode = self.MODE_GUANGHAN
         self.audio.sync_for_game_state(self.mode, self.mainline)
         self.report_started = False
         self.player.rect.midbottom = config.GUANGHAN_SOUTH_SPAWN
         self.player.position.xy = self.player.rect.topleft
         self.player.facing = "up"
-        self._save_current_slot()
 
     def _begin_guanghan_report(self) -> None:
         """玩家主动靠近嫦娥后才开始复命，保留入殿探索窗口。"""
@@ -1454,7 +1955,7 @@ class Game:
             self.event_bus.emit(
                 SHOW_DIALOG,
                 speaker_id="change",
-                lines=["两项职司尚未验明，来使不可复命。"],
+                lines=["伐桂、捣药、修月三项尚未验齐，来使不可复命。"],
             )
             return
         self.report_started = True
@@ -1462,7 +1963,6 @@ class Game:
             self._start_polluted_report()
         else:
             self._start_normal_report()
-        self._save_current_slot()
 
     def _start_polluted_report(self) -> None:
         """污染状态下正常复命，但只留下池边异常的待触发结局。"""
@@ -1481,7 +1981,7 @@ class Game:
             caption = "两份记录在月光中叠成同一处污痕。"
             lines = [
                 "嫦娥隔着帘影听完复命。",
-                "吴刚、玉兔二职，皆已验毕。",
+                "伐桂、捣药、修月三职，皆已验毕。",
                 "使者可返月谷。只是月光会先照见使者自己。",
                 "出去吧，池水会替月宫收下多余的记录。",
             ]
@@ -1549,7 +2049,7 @@ class Game:
         if self.dialog_box.speaker_id != "change":
             return
         self.mainline["handoff_completed"] = True
-        self._save_current_slot()
+        self._save_checkpoint("report_completed")
 
     def _emit_report_audio_cues(self) -> None:
         """Trigger report shot cues once, including when a frame skips a boundary."""
@@ -1574,7 +2074,6 @@ class Game:
         self.ending_cg.start(pending_ending)
         self.audio.stop_legacy_ambient()
         self.mode = self.MODE_ENDING_CG
-        self._save_current_slot()
         return True
 
     def _try_leave_guanghan_after_report(self) -> bool:
@@ -1602,12 +2101,10 @@ class Game:
 
     def _complete_guanghan_departure(self) -> None:
         """转场结束后把来使放回广寒宫前院。"""
-        self.exit_confirm_open = False
         self.dialog_box.active = False
         self.player.rect.midbottom = config.COURTYARD_NORTH_SPAWN
         self.player.position.xy = self.player.rect.topleft
         self.player.facing = "down"
-        self._save_current_slot()
 
     def _leave_courtyard_to_home(self) -> None:
         """从广场南门返回月谷，保持两道门的空间顺序。"""
@@ -1625,7 +2122,7 @@ class Game:
                 self.mainline["return_departed_on_time"] = True
                 self.mainline["return_countdown_active"] = False
                 self.mainline["return_countdown_remaining"] = 0.0
-                self._save_current_slot()
+                self._save_checkpoint("departed_palace")
             else:
                 self.event_bus.emit(
                     SHOW_DIALOG,
@@ -1644,7 +2141,6 @@ class Game:
 
     def _complete_courtyard_home_return(self) -> None:
         """转场结束后把来使送回月谷南门。"""
-        self.exit_confirm_open = False
         self.dialog_box.active = False
         self.player.rect.midtop = (
             self.home_tutorial.gate_trigger_rect.centerx,
@@ -1652,7 +2148,6 @@ class Game:
         )
         self.player.position.xy = self.player.rect.topleft
         self.player.facing = "down"
-        self._save_current_slot()
 
     def _show_courtyard_exit_blocked_for_pool(self) -> None:
         """污染复命待裁决时，明确告知玩家必须去月池。"""
@@ -1707,7 +2202,7 @@ class Game:
         self.ending_cg.start("he_return_earth")
         self.audio.stop_legacy_ambient()
         self.mode = self.MODE_ENDING_CG
-        self._save_current_slot()
+        self._save_checkpoint("returned_earth")
         return True
     def _trigger_change_ending(self) -> None:
         """候月倒计时归零后，触发取代嫦娥 BE。"""
@@ -1730,7 +2225,6 @@ class Game:
         self.ending_cg.start("be_change")
         self.audio.stop_legacy_ambient()
         self.mode = self.MODE_ENDING_CG
-        self._save_current_slot()
     def _start_normal_report(self) -> None:
         """无污染时完成正常复命，并启动候月倒计时。"""
         if self.game_state.is_dead():
@@ -1746,11 +2240,12 @@ class Game:
             [
                 "嫦娥没有看你，她看着你身后的月光。",
                 "吴刚斧声未绝，玉兔杵声未停。",
+                "偏殿旧月已封，三项查验俱全。",
                 "来使的记录，月宫收下了。",
                 "复命既毕，使者可候月落。",
                 "待这一轮月光尽了，归路自会显明。",
             ],
-            "两份职司记录被月光托起，递入广寒宫深处。",
+            "两份职司记录与修月封验一并呈入广寒宫。",
         )
     def _try_complete_wugang_check(self) -> bool:
         """月桂流血时，允许来使通过对话选项完成伐桂检查。"""
@@ -1833,8 +2328,9 @@ class Game:
 
     def _is_player_in_yutu_front_arc(self) -> bool:
         """玉兔大图面朝左，左侧才是正面/对视危险区。"""
-        vertical_distance = abs(self.player.rect.centery - self.yutu.rect.centery)
-        return self.player.rect.centerx <= self.yutu.rect.left and vertical_distance <= 20
+        body = self.yutu.get_collision_rect()
+        vertical_distance = abs(self.player.rect.centery - body.centery)
+        return self.player.rect.centerx <= body.left and vertical_distance <= 16
 
     def _is_player_behind_yutu(self) -> bool:
         """除左侧正面对视区外，上、下和右后方都允许完成检查。"""
@@ -1872,9 +2368,11 @@ class Game:
                 "你只记录，不执斧。",
                 "吴刚低声笑了一下，像斧刃擦过树皮。",
                 "已记：伐桂职司仍续。斧声未绝，月桂未亡。",
+                "三验俱全，去广寒宫复命吧。" if self._office_checks_complete()
+                else "三验未齐时，宫门不会放行。照着告示，将余下的差事办完。",
             ]
         self.event_bus.emit(SHOW_DIALOG, speaker_id="wugang", lines=lines)
-        self._save_current_slot()
+        self._save_checkpoint("wugang_completed")
 
     def _complete_yutu_check(self, polluted: bool) -> None:
         """写入玉兔检查结果并播放对应反馈。"""
@@ -1894,13 +2392,15 @@ class Game:
                 "你只记录药色与杵声，没有替它确认药成。",
                 "玉兔没有回头，药臼里传出一声很轻的空响。",
                 "已记：捣药职司仍续。杵声未停，药未由来使试验。",
+                "伐桂、捣药、修月俱验，才算来使的差事办全。",
             ]
         self.event_bus.emit(SHOW_DIALOG, speaker_id="yutu", lines=lines)
-        self._save_current_slot()
+        self._save_checkpoint("yutu_completed")
 
     def _get_collision_rects(self) -> list[pygame.Rect]:
         """收集地图、世界物体和 NPC 碰撞。"""
         rects = [obj.get_collision_rect() for obj in self.world_objects]
+        rects.extend(self.repair_door.collision_rects())
         rects.extend(npc.get_collision_rect() for npc in self.npcs)
         # 南门正常路线保留中央交互口；污染待裁决时整段南墙封闭，必须去月池。
         if self.mainline.get("pending_pool_ending"):
@@ -2018,43 +2518,22 @@ class Game:
         self._tree_bleeding_check_cooldown = 0.0
         self._tree_was_bleeding = True
         self._tree_safe_exit_grace = 0.0
-        self._save_current_slot()
 
     def _on_violation_changed(self, **payload) -> None:
-        """违规后自动保存，让存档记录月宫识别进度。"""
+        """违规只更新演出；不能覆盖最近的任务完成存档。"""
         count = int(payload.get("count", self.game_state.violation_count))
         self.palace_wall.set_horror_level(count)
-        self._save_current_slot()
 
     def _reset_after_death(self) -> None:
-        """死亡后重启当前 Demo 场景的关键状态。"""
-        self.death_screen.active = False
-        self.death_screen.fade_timer = 0.0
-        self.audio.stop_cg_sounds()
-        # 死亡只会发生在正式前院流程中；旧的 PLAYER_START_Y=464 属于
-        # 教程接入前的旧大地图坐标，会把角色直接放进前院南墙碰撞区。
-        spawn_x, spawn_y = config.COURTYARD_SOUTH_SPAWN
-        self.player = Player(
-            spawn_x - config.PLAYER_SIZE[0] // 2,
-            spawn_y - config.PLAYER_SIZE[1],
-        )
-        # 重试出生点仍在月池南侧的倒影缓冲区内；朝向南门，避免玩家
-        # 在死亡提示后暂时不操作就被同一条凝视规则再次处罚。
-        self.player.facing = "down"
-        self.laurel_tree.set_bleeding(False)
-        self.palace_wall.set_horror_level(0)
-        self.moon_pool.reflection_flash_timer = 0.0
-        self.distortion.reset()
-        self.rule_book.close()
-        self.broken_jade_view.active = False
-        self.broken_jade_view.stage = self.broken_jade_view.STAGE_PICKUP
-        self.dialog_box.active = False
-        self.exit_confirm_open = False
-        self._tree_bleeding_check_cooldown = 0.0
-        self._tree_was_bleeding = False
-        self._tree_safe_exit_grace = 0.0
-        self._setup_rule_zones()
-        self._save_current_slot()
+        """恢复最近完成事件的完整快照，死亡本身不写档。"""
+        payload = deepcopy(self.current_save_data or self.save_manager.default_save(self.current_slot_id or 1))
+        # 老版本曾把死亡状态自动写入磁盘；载入它时给出可继续的安全状态。
+        if payload.get("violation_count", 0) >= 3:
+            payload["violation_count"] = 0
+        self._apply_save_data(payload)
+        self.mode = self._saved_scene(self.current_save_data or payload)
+        self.pause_return_mode = None
+        self.audio.sync_for_game_state(self.mode, self.mainline)
 
 
 

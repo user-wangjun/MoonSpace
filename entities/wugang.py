@@ -21,6 +21,9 @@ class Wugang(NPCBase):
     LARGE_FRAME_HEIGHT = 92
     REST_FRAME_ROW = 0
     REST_FRAME_COL = 0
+    # The artist's recovery/neutral poses omit the axe. Use adjacent held-axe
+    # poses there so the tool never vanishes between otherwise continuous cuts.
+    DRAW_FRAME_INDICES = (1, 1, 3, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13, 13)
 
     def __init__(self, event_bus: EventBus, x: int = 156, y: int = 346) -> None:
         super().__init__(
@@ -89,16 +92,17 @@ class Wugang(NPCBase):
                 4,
             )
             if self.is_resting:
-                sprite = rows[self.REST_FRAME_ROW][self.REST_FRAME_COL]
+                sprite = rows[0][1]
             else:
-                frame_index = self.current_frame % self.CHOP_FRAME_COUNT
+                frame_index = self.DRAW_FRAME_INDICES[self.current_frame % self.CHOP_FRAME_COUNT]
                 sprite = rows[frame_index // self.GRID_COLS][frame_index % self.GRID_COLS]
             sprite = pygame.transform.flip(sprite, True, False)
         except (FileNotFoundError, pygame.error, ValueError):
             sprite = None
 
         if sprite is not None:
-            surface.blit(sprite, (rect.centerx - sprite.get_width() // 2, rect.bottom - sprite.get_height()))
+            bounds = sprite.get_bounding_rect(min_alpha=8)
+            surface.blit(sprite, (rect.centerx - sprite.get_width() // 2, rect.bottom - bounds.bottom))
             return
 
         draw_filled_rect(surface, (rect.x + 4, rect.y - 7, 8, 7), palette.SKIN_PALE)

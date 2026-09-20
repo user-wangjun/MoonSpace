@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pygame
 
+import config
 from core.event_bus import EventBus, RULE_DISCOVERED
 from core.game_state import GameState
 from core.input_manager import InputManager
@@ -36,6 +37,9 @@ class RuleBook:
             self.toggle()
             return
         if not self.is_open:
+            return
+        if input_manager.was_pressed(config.ACTION_QUIT):
+            self.close()
             return
         delta = 0
         if self._key_pressed(input_manager, pygame.K_UP, pygame.K_w, pygame.K_PAGEUP):

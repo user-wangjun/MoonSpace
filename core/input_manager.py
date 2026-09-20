@@ -38,6 +38,11 @@ class InputManager:
     def __init__(self) -> None:
         self._pressed_once: set[str] = set()
         self._keys_pressed_once: set[int] = set()
+        self._mouse_buttons_pressed_once: set[int] = set()
+        self._mouse_buttons_released_once: set[int] = set()
+        self._mouse_buttons_down: set[int] = set()
+        self.mouse_position: tuple[int, int] | None = None
+        self.mouse_motion = pygame.Vector2()
         self.text_input = ""
         self.scroll_y = 0
         self.fullscreen_toggle_requested = False
@@ -47,6 +52,9 @@ class InputManager:
         """每帧开始时清空单次触发缓存。"""
         self._pressed_once.clear()
         self._keys_pressed_once.clear()
+        self._mouse_buttons_pressed_once.clear()
+        self._mouse_buttons_released_once.clear()
+        self.mouse_motion.update(0, 0)
         self.text_input = ""
         self.scroll_y = 0
         self.fullscreen_toggle_requested = False
@@ -65,6 +73,23 @@ class InputManager:
 
         if event.type == pygame.MOUSEWHEEL:
             self.scroll_y += event.y
+            return
+
+        if event.type == pygame.MOUSEMOTION:
+            self.mouse_position = tuple(event.pos)
+            self.mouse_motion += pygame.Vector2(event.rel)
+            return
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            self.mouse_position = tuple(event.pos)
+            self._mouse_buttons_down.add(event.button)
+            self._mouse_buttons_pressed_once.add(event.button)
+            return
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            self.mouse_position = tuple(event.pos)
+            self._mouse_buttons_down.discard(event.button)
+            self._mouse_buttons_released_once.add(event.button)
             return
 
         if event.type != pygame.KEYDOWN:
@@ -96,3 +121,15 @@ class InputManager:
     def was_key_pressed(self, key: int) -> bool:
         """查询某个物理按键是否在本帧刚按下，用于菜单快捷键。"""
         return key in self._keys_pressed_once
+
+    def mouse_button_down(self, button: int = 1) -> bool:
+        """查询鼠标按钮是否仍按住。"""
+        return button in self._mouse_buttons_down
+
+    def was_mouse_pressed(self, button: int = 1) -> bool:
+        """查询鼠标按钮是否在本帧刚按下。"""
+        return button in self._mouse_buttons_pressed_once
+
+    def was_mouse_released(self, button: int = 1) -> bool:
+        """查询鼠标按钮是否在本帧刚松开。"""
+        return button in self._mouse_buttons_released_once

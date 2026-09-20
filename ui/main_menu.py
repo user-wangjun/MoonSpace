@@ -16,18 +16,20 @@ from utils.pixel_art import draw_filled_rect
 
 MENU_NEW_GAME = "new_game"
 MENU_LOAD_GAME = "load_game"
+MENU_SETTINGS = "settings"
 MENU_DELETE_SAVE = "delete_save"
 MENU_QUIT = "quit"
 
 
 class MainMenu:
-    """游戏启动主菜单：新游戏、读档、删除存档、退出。"""
+    """游戏启动主菜单：新游戏、读档、设置、删除存档、退出。"""
 
     MENU_ITEMS = (
         ("1  新游戏", MENU_NEW_GAME),
         ("2  读档", MENU_LOAD_GAME),
-        ("3  删除存档", MENU_DELETE_SAVE),
-        ("4  退出", MENU_QUIT),
+        ("3  设置", MENU_SETTINGS),
+        ("4  删除存档", MENU_DELETE_SAVE),
+        ("5  退出", MENU_QUIT),
     )
 
     def __init__(self) -> None:
@@ -37,7 +39,7 @@ class MainMenu:
 
     def layout(self) -> dict[str, object]:
         """计算主菜单文字与面板矩形，避免不同中文字体下贴边。"""
-        panel = pygame.Rect(82, 70, 316, 176)
+        panel = pygame.Rect(82, 42, 316, 204)
         title_size = 18
         item_size = 14
         esc_size = 11
@@ -117,8 +119,10 @@ class MainMenu:
         if input_manager.was_key_pressed(pygame.K_2):
             return MENU_LOAD_GAME
         if input_manager.was_key_pressed(pygame.K_3):
-            return MENU_DELETE_SAVE
+            return MENU_SETTINGS
         if input_manager.was_key_pressed(pygame.K_4):
+            return MENU_DELETE_SAVE
+        if input_manager.was_key_pressed(pygame.K_5):
             return MENU_QUIT
 
         if input_manager.was_key_pressed(pygame.K_UP) or input_manager.was_key_pressed(pygame.K_w):
