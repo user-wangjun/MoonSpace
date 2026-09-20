@@ -1,0 +1,95 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    name: Build ${{ matrix.arch }} DMG
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYGAME_HIDE_SUPPORT_PROMPT: "1"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          architecture: ${{ matrix.arch == 'arm64' && 'arm64' || 'x64' }}
+          cache: pip
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest pyinstaller
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+      - name: Build macOS application bundle
+        run: |
+          python -m PyInstaller \
+            --clean \
+            --noconfirm \
+            --onedir \
+            --windowed \
+            --name MoonSpace \
+            --osx-bundle-identifier com.userwangjun.moonspace \
+            --add-data "assets/audio:assets/audio" \
+            --add-data "assets/sprites:assets/sprites" \
+            --add-data "assets/fonts:assets/fonts" \
+            main.py
+
+      - name: Verify application architecture
+        run: |
+          test -d dist/MoonSpace.app
+          APP_BINARY="dist/MoonSpace.app/Contents/MacOS/MoonSpace"
+          test -x "$APP_BINARY"
+          ACTUAL_ARCHS="$(lipo -archs "$APP_BINARY")"
+          echo "Application architectures: $ACTUAL_ARCHS"
+          case " $ACTUAL_ARCHS " in
+            *" ${{ matrix.arch }} "*) ;;
+            *) echo "Expected ${{ matrix.arch }} binary" >&2; exit 1 ;;
+          esac
+          codesign --verify --deep --strict dist/MoonSpace.app
+
+      - name: Create DMG and checksum
+        run: |
+          mkdir -p package
+          DMG="package/MoonSpace-macOS-${{ matrix.arch }}.dmg"
+          hdiutil create \
+            -volname "MoonSpace" \
+            -srcfolder dist/MoonSpace.app \
+            -ov \
+            -format UDZO \
+            "$DMG"
+          shasum -a 256 "$DMG" > "$DMG.sha256"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: MoonSpace-macOS-${{ matrix.arch }}
+          path: |
+            package/MoonSpace-macOS-${{ matrix.arch }}.dmg
+            package/MoonSpace-macOS-${{ matrix.arch }}.dmg.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
